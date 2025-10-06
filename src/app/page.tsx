@@ -28,6 +28,8 @@ export default function Home() {
   ${Math.floor((seconds % 3600) / 60).toString().padStart(2, "0")}:
   ${(seconds % 60).toString().padStart(2, "0")}`;
 
+  const navigateToLogin = () => window.location.href = "/login";
+
   const feeBreakdown = [
     { percentage: "7%", description: "Havuzdaki stake sahiplerine dağıtılır", icon: <Users className="w-5 h-5" />, color: "from-green-500 to-emerald-500" },
     { percentage: "1%", description: "Havuza bonus ödül olarak eklenir", icon: <Gift className="w-5 h-5" />, color: "from-purple-500 to-pink-500" },
@@ -53,7 +55,7 @@ export default function Home() {
               <a href="#nasil-calisir" className="text-gray-300 hover:text-white transition-colors">Nasıl Çalışır</a>
               <a href="#komisyonlar" className="text-gray-300 hover:text-white transition-colors">Komisyonlar</a>
               <a href="#bonuslar" className="text-gray-300 hover:text-white transition-colors">Bonuslar</a>
-              <button className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-6 py-2 rounded-full hover:shadow-lg hover:shadow-indigo-500/50 transition-all flex items-center gap-2">
+              <button className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-6 py-2 rounded-full hover:shadow-lg hover:shadow-indigo-500/50 transition-all flex items-center gap-2" onClick={navigateToLogin}>
                 <Wallet className="w-4 h-4" />
                 Oturum Aç
               </button>
@@ -72,7 +74,7 @@ export default function Home() {
               <a href="#nasil-calisir" className="block text-gray-300 hover:text-white transition-colors">Nasıl Çalışır</a>
               <a href="#komisyonlar" className="block text-gray-300 hover:text-white transition-colors">Komisyonlar</a>
               <a href="#bonuslar" className="block text-gray-300 hover:text-white transition-colors">Bonuslar</a>
-              <button className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-6 py-2 rounded-full flex items-center justify-center gap-2">
+              <button className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-6 py-2 rounded-full flex items-center justify-center gap-2" onClick={navigateToLogin}>
                 <Wallet className="w-4 h-4" />
                 Oturum Aç
               </button>
@@ -100,7 +102,7 @@ export default function Home() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <button className="group bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-8 py-4 rounded-full text-lg font-semibold hover:shadow-2xl hover:shadow-indigo-500/50 transition-all flex items-center gap-2">
+              <button className="group bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-8 py-4 rounded-full text-lg font-semibold hover:shadow-2xl hover:shadow-indigo-500/50 transition-all flex items-center gap-2" onClick={navigateToLogin}>
                 <Wallet className="w-5 h-5" />
                 Hemen Başla
               </button>
@@ -112,7 +114,7 @@ export default function Home() {
 
           {/* Live Stats */}
           <div className="bg-gradient-to-br from-slate-800/50 to-indigo-900/30 backdrop-blur-sm rounded-2xl p-8 border border-indigo-500/20 shadow-2xl">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="text-center">
                 <div className="text-4xl font-bold text-white mb-2">1234</div>
                 <div className="text-gray-400">Toplam Stake Eden</div>
@@ -120,6 +122,10 @@ export default function Home() {
               <div className="text-center">
                 <div className="text-4xl font-bold text-white mb-2">45678</div>
                 <div className="text-gray-400">Toplam SOL Stake</div>
+              </div>
+              <div className="text-center">
+                <div className="text-4xl font-bold text-white mb-2">90123</div>
+                <div className="text-gray-400">Bonus Ödül Havuzu</div>
               </div>
               <div className="text-center">
                 <div className="text-4xl font-bold text-indigo-400 mb-2">{formatTime(countdown)}</div>
@@ -277,7 +283,7 @@ export default function Home() {
         <div className="max-w-4xl mx-auto text-center bg-gradient-to-r from-indigo-600 to-purple-600 rounded-3xl p-12">
           <h2 className="text-4xl font-bold text-white mb-4">Hemen Stake Etmeye Başla</h2>
           <p className="text-xl text-indigo-100 mb-8">SOL tokenlerinizi yatırın, otomatik ödüller kazanın</p>
-          <button className="bg-white text-indigo-600 px-8 py-4 rounded-full text-lg font-semibold hover:shadow-2xl transition-all flex items-center gap-2 mx-auto">
+          <button className="bg-white text-indigo-600 px-8 py-4 rounded-full text-lg font-semibold hover:shadow-2xl transition-all flex items-center gap-2 mx-auto" onClick={navigateToLogin}>
             <Wallet className="w-5 h-5" />
             Oturum Aç ve Başla
           </button>

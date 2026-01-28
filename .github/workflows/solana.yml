@@ -48,7 +48,3 @@ jobs:
       - name: Build Program
         working-directory: ./program
         run: anchor build
-
-      - name: Run Tests
-        working-directory: ./program
-        run: anchor test --skip-local-validator

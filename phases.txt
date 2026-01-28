@@ -1,0 +1,210 @@
+### PHASE 1 PROMPT — Project Setup & Architecture
+
+You are Claude Sonnet 4.5 acting as a **senior Solana blockchain architect and Rust engineer**.
+
+We are building a production-grade staking protocol called **“Staking Express”** using a **single monorepo** that contains:
+
+* `/program` → Anchor Solana smart contract
+* `/frontend` → React + Next.js frontend
+
+In this phase, you must:
+
+---
+
+## 1. Repository Layout (Strict)
+
+Design the repository with this exact structure:
+
+```
+staking-express/
+│
+├── program/
+│   ├── Anchor.toml
+│   ├── Cargo.toml
+│   ├── programs/
+│   │   └── staking_express/
+│   │       ├── src/
+│   │       │   ├── lib.rs
+│   │       │   ├── initialize.rs
+│   │       │   ├── stake.rs
+│   │       │   ├── unstake.rs
+│   │       │   ├── claim_rewards.rs
+│   │       │   ├── bonus_pool.rs
+│   │       │   ├── referral.rs
+│   │       │   ├── state.rs
+│   │       │   ├── helpers.rs
+│   │       │   ├── fees.rs
+│   │       │   ├── math.rs
+│   │       │   ├── events.rs
+│   │       │   └── errors.rs
+│   │
+│   └── tests/
+│
+├── frontend/
+│
+└── .github/workflows/
+```
+
+Explain:
+
+* Why a monorepo is used
+* How Anchor builds inside `/program`
+* How the IDL will later be shared with `/frontend`
+
+---
+
+## 2. Toolchain & Build Configuration
+
+Configure:
+
+* Anchor framework
+* Rust edition fixed to **2021** to avoid the `edition2024` build error
+
+Provide and explain:
+
+* `program/Cargo.toml`
+* `program/Anchor.toml`
+
+Explain:
+
+* Why edition 2021 avoids the error
+* Version pinning strategy
+
+---
+
+## 3. Program Entry Architecture
+
+Implement and explain:
+
+* `lib.rs` with module declarations and instruction routing
+* Empty scaffolding files for:
+
+  * `initialize.rs`
+  * `stake.rs`
+  * `unstake.rs`
+  * `claim_rewards.rs`
+  * `bonus_pool.rs`
+  * `referral.rs`
+  * `state.rs`
+  * `helpers.rs`
+  * `fees.rs`
+  * `math.rs`
+  * `events.rs`
+  * `errors.rs`
+
+Do NOT implement business logic yet — only:
+
+* Program skeleton
+* Module wiring
+* Compilation-ready structure
+
+Explain every file’s purpose and how Anchor dispatch works.
+
+---
+
+## 4. High-Level System Design (No Code Yet)
+
+Before ending this phase, explain:
+
+* All on-chain accounts we will need
+* PDA strategy
+* Authority model
+* How staking, bonus pool, and referral systems will interact
+
+---
+
+### Output Rules
+
+* Explain everything clearly
+* Produce compiling scaffolding code
+* End with a short summary and wait for me to say **“Proceed to Phase 2”**
+
+---
+
+---
+
+## 🔹 PHASE 2 — Core State & Fee Engine
+
+**Goal:** Implement accounts, fee math, and staking core.
+
+I will give you this when you’re ready:
+
+* All on-chain state structs
+* Fee calculation engine (10% logic)
+* Treasury routing
+* Reward accounting base
+
+---
+
+## 🔹 PHASE 3 — Staking / Unstaking Instructions
+
+**Goal:**
+
+* Implement `stake.rs` and `unstake.rs`
+* Full fee flow
+* Reward distribution engine
+* Events
+
+---
+
+## 🔹 PHASE 4 — Bonus Pool System
+
+**Goal:**
+
+* Countdown timer
+* Last-10 investors list
+* Bonus distribution logic
+* Safety against race conditions
+
+---
+
+## 🔹 PHASE 5 — Referral System
+
+**Goal:**
+
+* Instant referral reward
+* Referral reward pool
+* Monthly scheduler & distribution
+
+---
+
+## 🔹 PHASE 6 — Testing (Anchor + TypeScript + Mocha)
+
+**Goal:**
+
+* Full integration test suite
+* Fee correctness
+* Bonus logic tests
+* Edge cases
+
+---
+
+## 🔹 PHASE 7 — CI (GitHub Actions + Radar)
+
+**Goal:**
+
+* `.github/workflows/ci.yml`
+* Formatting, linting, build, test
+* Radar static analysis integration
+
+---
+
+## 🔹 PHASE 8 — Frontend Integration (Next.js)
+
+**Goal:**
+
+* Wallet adapter
+* IDL import from `/program`
+* PDA reads
+* Live dashboard values
+
+---
+
+## 🔹 PHASE 9 — Deployment & Hosting
+
+**Goal:**
+
+* Devnet deployment
+* Upgrade authority
+* Frontend hosting options
+* Production checklist

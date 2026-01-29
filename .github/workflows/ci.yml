@@ -1,4 +1,4 @@
-name: Staking Express CI
+name: Staking Express Unified CI
 
 on:
   push:
@@ -11,8 +11,41 @@ env:
   ANCHOR_VERSION: 0.32.1
 
 jobs:
+  lint-and-format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.82.0
+          components: rustfmt, clippy
+
+      - name: Rust Formatting Check
+        working-directory: ./program
+        run: cargo fmt -- --check
+
+      - name: Rust Linting (Clippy)
+        working-directory: ./program
+        run: cargo clippy -- -D warnings
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+
+      - name: Install JS Dependencies
+        working-directory: ./program
+        run: npm ci
+
+      - name: TypeScript Type Check
+        working-directory: ./program
+        run: npx tsc --noEmit
+
   build-and-test:
     runs-on: ubuntu-24.04
+    needs: lint-and-format
     steps:
       - uses: actions/checkout@v4
 
@@ -42,9 +75,14 @@ jobs:
           sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
         continue-on-error: true
-          
+
       - name: Verify Solana Version
         run: solana --version
+
+      - name: Generate keypair
+        run: |
+          mkdir -p ~/.config/solana
+          solana-keygen new --no-passphrase --outfile ~/.config/solana/id.json
 
       - name: Install Anchor
         run: |
@@ -59,3 +97,18 @@ jobs:
       - name: Build Program
         working-directory: ./program
         run: anchor build
+
+      - name: Run Tests
+        working-directory: ./program
+        run: anchor test
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run Radar Scan
+        uses: Auditware/radar-action@v1
+        with:
+          path: ./program

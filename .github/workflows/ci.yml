@@ -110,7 +110,7 @@ jobs:
         id: radar
         uses: auditware/radar-action@main
         with:
-          path: "anchor"
+          path: "program"
   
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@v3

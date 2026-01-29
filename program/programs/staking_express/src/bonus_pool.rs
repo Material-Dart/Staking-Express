@@ -1,12 +1,10 @@
-use anchor_lang::prelude::*;
-use anchor_lang::system_program::{transfer, Transfer};
-
 use crate::constants::*;
 use crate::errors::StakingError;
 use crate::events::*;
 use crate::helpers::*;
 use crate::math::*;
 use crate::state::*;
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 pub struct DistributeBonusPool<'info> {
@@ -102,19 +100,8 @@ pub fn distribute_bonus_pool_handler(ctx: Context<DistributeBonusPool>) -> Resul
         update_reward_per_share(staking_pool, to_all_stakers)?;
 
         // Transfer from bonus pool to staking pool
-        let pool_pda_seeds = &[seeds::BONUS_POOL, &[bonus_pool.bump]];
-
-        transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.system_program.to_account_info(),
-                Transfer {
-                    from: bonus_pool.to_account_info(),
-                    to: staking_pool.to_account_info(),
-                },
-                &[pool_pda_seeds],
-            ),
-            to_all_stakers,
-        )?;
+        **bonus_pool.to_account_info().try_borrow_mut_lamports()? -= to_all_stakers;
+        **staking_pool.to_account_info().try_borrow_mut_lamports()? += to_all_stakers;
     }
 
     // ========== UPDATE BONUS POOL STATE ==========

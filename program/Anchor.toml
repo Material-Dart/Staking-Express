@@ -41,10 +41,4 @@ address = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 [[test.validator.clone]]
 address = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
 
-[[test.genesis]]
-address = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-program = "spl_token.so"
 
-[[test.genesis]]
-address = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-program = "spl_associated_token_account.so"

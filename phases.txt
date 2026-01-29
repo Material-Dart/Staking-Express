@@ -168,7 +168,7 @@ I will give you this when you’re ready:
 
 ---
 
-## 🔹 PHASE 6 — Testing (Anchor + TypeScript + Mocha)
+## 🔹 PHASE 6 — Testing (Anchor + TypeScript + Mocha) (tamamlandı: 29.1.26)
 
 **Goal:**
 

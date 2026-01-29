@@ -1,11 +1,9 @@
-use anchor_lang::prelude::*;
-use anchor_lang::system_program::{transfer, Transfer};
-
 use crate::errors::StakingError;
 use crate::events::*;
 use crate::helpers::*;
 use crate::math::*;
 use crate::state::*;
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 pub struct DistributeReferralPool<'info> {
@@ -74,19 +72,8 @@ pub fn distribute_referral_pool_handler(
         update_reward_per_share(staking_pool, to_stakers)?;
 
         // Transfer from referral pool to staking pool
-        let pool_pda_seeds = &[seeds::REFERRAL_POOL, &[referral_pool.bump]];
-
-        transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.system_program.to_account_info(),
-                Transfer {
-                    from: referral_pool.to_account_info(),
-                    to: staking_pool.to_account_info(),
-                },
-                &[pool_pda_seeds],
-            ),
-            to_stakers,
-        )?;
+        **referral_pool.to_account_info().try_borrow_mut_lamports()? -= to_stakers;
+        **staking_pool.to_account_info().try_borrow_mut_lamports()? += to_stakers;
 
         // Update referral pool balance
         referral_pool.balance = carry_forward;

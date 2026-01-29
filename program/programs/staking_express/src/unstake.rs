@@ -1,6 +1,3 @@
-use anchor_lang::prelude::*;
-use anchor_lang::system_program::{transfer, Transfer};
-
 use crate::constants::*;
 use crate::errors::StakingError;
 use crate::events::*;
@@ -8,6 +5,7 @@ use crate::fees::*;
 use crate::helpers::*;
 use crate::math::*;
 use crate::state::*;
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 pub struct Unstake<'info> {
@@ -81,6 +79,7 @@ pub struct Unstake<'info> {
 
     /// Optional referrer (if user was referred)
     /// CHECK: Taken from user_stake.referrer
+    #[account(mut)]
     pub referrer: Option<UncheckedAccount<'info>>,
 
     pub system_program: Program<'info, System>,
@@ -119,44 +118,27 @@ pub fn unstake_handler(ctx: Context<Unstake>, gross_unstake_amount: u64) -> Resu
     // User receives: pending_rewards (no fee) + net_unstake_amount (90%)
 
     // 1. Transfer 100 BPS to treasury
-    let pool_pda_seeds = &[seeds::STAKING_POOL, &[staking_pool.bump]];
-    transfer(
-        CpiContext::new_with_signer(
-            ctx.accounts.system_program.to_account_info(),
-            Transfer {
-                from: staking_pool.to_account_info(),
-                to: ctx.accounts.treasury.to_account_info(),
-            },
-            &[pool_pda_seeds],
-        ),
-        fees.platform,
-    )?;
+    **staking_pool.to_account_info().try_borrow_mut_lamports()? -= fees.platform;
+    **ctx
+        .accounts
+        .treasury
+        .to_account_info()
+        .try_borrow_mut_lamports()? += fees.platform;
 
     // 2. Transfer 50 BPS to Material Dart
-    transfer(
-        CpiContext::new_with_signer(
-            ctx.accounts.system_program.to_account_info(),
-            Transfer {
-                from: staking_pool.to_account_info(),
-                to: ctx.accounts.material_dart_wallet.to_account_info(),
-            },
-            &[pool_pda_seeds],
-        ),
-        fees.material_dart,
-    )?;
+    **staking_pool.to_account_info().try_borrow_mut_lamports()? -= fees.material_dart;
+    **ctx
+        .accounts
+        .material_dart_wallet
+        .to_account_info()
+        .try_borrow_mut_lamports()? += fees.material_dart;
 
     // 3. Transfer 100 BPS to bonus pool
-    transfer(
-        CpiContext::new_with_signer(
-            ctx.accounts.system_program.to_account_info(),
-            Transfer {
-                from: staking_pool.to_account_info(),
-                to: bonus_pool.to_account_info(),
-            },
-            &[pool_pda_seeds],
-        ),
-        fees.bonus_pool,
-    )?;
+    // Note: Bonus Pool is also a PDA owned by this program.
+    // We can just move lamports directly.
+    **staking_pool.to_account_info().try_borrow_mut_lamports()? -= fees.bonus_pool;
+    **bonus_pool.to_account_info().try_borrow_mut_lamports()? += fees.bonus_pool;
+
     bonus_pool.balance = safe_add(bonus_pool.balance, fees.bonus_pool)?;
 
     // 4. Handle referral (50 BPS)
@@ -164,37 +146,23 @@ pub fn unstake_handler(ctx: Context<Unstake>, gross_unstake_amount: u64) -> Resu
         if let Some(ref referrer_account) = ctx.accounts.referrer {
             require!(
                 referrer_account.key() == referrer_pubkey,
-                StakingError::InvalidAccountOwner // Or a more specific error
+                StakingError::InvalidAccountOwner
             );
 
             // Pay referrer directly
-            transfer(
-                CpiContext::new_with_signer(
-                    ctx.accounts.system_program.to_account_info(),
-                    Transfer {
-                        from: staking_pool.to_account_info(),
-                        to: referrer_account.to_account_info(),
-                    },
-                    &[pool_pda_seeds],
-                ),
-                fees.referral,
-            )?;
+            **staking_pool.to_account_info().try_borrow_mut_lamports()? -= fees.referral;
+            **referrer_account
+                .to_account_info()
+                .try_borrow_mut_lamports()? += fees.referral;
         } else {
             return Err(StakingError::InvalidAmount.into());
         }
     } else {
         // No referrer - add to referral pool
-        transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.system_program.to_account_info(),
-                Transfer {
-                    from: staking_pool.to_account_info(),
-                    to: referral_pool.to_account_info(),
-                },
-                &[pool_pda_seeds],
-            ),
-            fees.referral,
-        )?;
+        // Referral Pool is likely a PDA owned by this program too.
+        **staking_pool.to_account_info().try_borrow_mut_lamports()? -= fees.referral;
+        **referral_pool.to_account_info().try_borrow_mut_lamports()? += fees.referral;
+
         referral_pool.balance = safe_add(referral_pool.balance, fees.referral)?;
     }
 
@@ -207,31 +175,21 @@ pub fn unstake_handler(ctx: Context<Unstake>, gross_unstake_amount: u64) -> Resu
 
     // Transfer pending rewards (NO FEE)
     if pending_rewards > 0 {
-        transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.system_program.to_account_info(),
-                Transfer {
-                    from: staking_pool.to_account_info(),
-                    to: ctx.accounts.user.to_account_info(),
-                },
-                &[pool_pda_seeds],
-            ),
-            pending_rewards,
-        )?;
+        **staking_pool.to_account_info().try_borrow_mut_lamports()? -= pending_rewards;
+        **ctx
+            .accounts
+            .user
+            .to_account_info()
+            .try_borrow_mut_lamports()? += pending_rewards;
     }
 
     // Transfer net unstake amount (90%)
-    transfer(
-        CpiContext::new_with_signer(
-            ctx.accounts.system_program.to_account_info(),
-            Transfer {
-                from: staking_pool.to_account_info(),
-                to: ctx.accounts.user.to_account_info(),
-            },
-            &[pool_pda_seeds],
-        ),
-        fees.net_amount,
-    )?;
+    **staking_pool.to_account_info().try_borrow_mut_lamports()? -= fees.net_amount;
+    **ctx
+        .accounts
+        .user
+        .to_account_info()
+        .try_borrow_mut_lamports()? += fees.net_amount;
 
     // ========== UPDATE STATE ==========
 

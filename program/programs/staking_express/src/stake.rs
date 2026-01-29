@@ -72,8 +72,9 @@ pub struct Stake<'info> {
     )]
     pub material_dart_wallet: UncheckedAccount<'info>,
 
-    /// Optional referrer account (if user was referred)
-    /// CHECK: Can be any account, validated during execution
+    /// Optional referrer (if user was referred)
+    /// CHECK: Validated against user input or stored logic
+    #[account(mut)]
     pub referrer: Option<UncheckedAccount<'info>>,
 
     pub system_program: Program<'info, System>,
@@ -164,6 +165,33 @@ pub fn stake_handler(ctx: Context<Stake>, gross_amount: u64) -> Result<()> {
 
         None
     };
+
+    // 5. Transfer remaining funds (Net Stake + Stakers Fee) to Staking Pool Vault
+    // This is 9700 BPS (9000 Net + 700 Stakers Reward)
+    // We calculate this as gross_amount - distributed_external_fees
+    let distributed_external_fees = fees
+        .platform
+        .checked_add(fees.material_dart)
+        .ok_or(StakingError::MathOverflow)?
+        .checked_add(fees.bonus_pool)
+        .ok_or(StakingError::MathOverflow)?
+        .checked_add(fees.referral)
+        .ok_or(StakingError::MathOverflow)?;
+
+    let vault_amount = gross_amount
+        .checked_sub(distributed_external_fees)
+        .ok_or(StakingError::MathUnderflow)?;
+
+    transfer(
+        CpiContext::new(
+            ctx.accounts.system_program.to_account_info(),
+            Transfer {
+                from: ctx.accounts.user.to_account_info(),
+                to: staking_pool.to_account_info(),
+            },
+        ),
+        vault_amount,
+    )?;
 
     // 5. Update reward_per_share with 700 BPS for all stakers
     if staking_pool.total_staked > 0 {

@@ -1,11 +1,9 @@
-use anchor_lang::prelude::*;
-use anchor_lang::system_program::{transfer, Transfer};
-
 use crate::errors::StakingError;
 use crate::events::*;
 use crate::helpers::*;
 use crate::math::*;
 use crate::state::*;
+use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 pub struct ClaimRewards<'info> {
@@ -53,19 +51,12 @@ pub fn claim_rewards_handler(ctx: Context<ClaimRewards>) -> Result<()> {
     require!(pending_rewards > 0, StakingError::NoRewardsAvailable);
 
     // Transfer rewards to user (NO FEE)
-    let pool_pda_seeds = &[seeds::STAKING_POOL, &[staking_pool.bump]];
-
-    transfer(
-        CpiContext::new_with_signer(
-            ctx.accounts.system_program.to_account_info(),
-            Transfer {
-                from: staking_pool.to_account_info(),
-                to: ctx.accounts.user.to_account_info(),
-            },
-            &[pool_pda_seeds],
-        ),
-        pending_rewards,
-    )?;
+    **staking_pool.to_account_info().try_borrow_mut_lamports()? -= pending_rewards;
+    **ctx
+        .accounts
+        .user
+        .to_account_info()
+        .try_borrow_mut_lamports()? += pending_rewards;
 
     // Update reward debt to prevent double claims
     user_stake.reward_debt =

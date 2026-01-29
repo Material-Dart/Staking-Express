@@ -51,13 +51,8 @@ describe("staking-express", () => {
                 .initialize()
                 .accounts({
                     authority: provider.wallet.publicKey,
-                    globalConfig,
-                    stakingPool,
-                    bonusPool,
-                    referralPool,
                     treasury: treasury.publicKey,
                     materialDartWallet: materialDartWallet.publicKey,
-                    systemProgram: anchor.web3.SystemProgram.programId,
                 })
                 .rpc();
 
@@ -104,15 +99,9 @@ describe("staking-express", () => {
             .stake(stakeAmount)
             .accounts({
                 user: user.publicKey,
-                globalConfig,
-                stakingPool,
-                userStake,
-                bonusPool,
-                referralPool,
                 treasury: treasury.publicKey,
                 materialDartWallet: materialDartWallet.publicKey,
                 referrer: null,
-                systemProgram: anchor.web3.SystemProgram.programId,
             })
             .signers([user])
             .rpc();
@@ -162,15 +151,9 @@ describe("staking-express", () => {
         // 1. Stake 1 SOL
         await program.methods.stake(new anchor.BN(1_000_000_000)).accounts({
             user: user.publicKey,
-            globalConfig,
-            stakingPool,
-            userStake,
-            bonusPool,
-            referralPool,
             treasury: treasury.publicKey,
             materialDartWallet: materialDartWallet.publicKey,
             referrer: null,
-            systemProgram: anchor.web3.SystemProgram.programId,
         }).signers([user]).rpc();
 
         // 2. Unstake 0.9 SOL (the entire staked balance)
@@ -178,17 +161,9 @@ describe("staking-express", () => {
 
         await program.methods.unstake(new anchor.BN(900_000_000)).accounts({
             user: user.publicKey,
-            globalConfig,
-            stakingPool,
-            userStake,
-            bonusPool,
-            referralPool,
-            poolVault: stakingPool,
             treasury: treasury.publicKey,
             materialDartWallet: materialDartWallet.publicKey,
             referrer: null,
-            referrerAccount: null,
-            systemProgram: anchor.web3.SystemProgram.programId,
         }).signers([user]).rpc();
 
         // Verify user stake is 0
@@ -240,15 +215,9 @@ describe("staking-express", () => {
 
         await program.methods.stake(stakeAmount).accounts({
             user: userA.publicKey,
-            globalConfig,
-            stakingPool,
-            userStake: userStakeA,
-            bonusPool,
-            referralPool,
             treasury: treasury.publicKey,
             materialDartWallet: materialDartWallet.publicKey,
             referrer: null,
-            systemProgram: anchor.web3.SystemProgram.programId,
         }).signers([userA]).rpc();
 
         // 2. User B stakes 10 SOL
@@ -269,15 +238,9 @@ describe("staking-express", () => {
 
         await program.methods.stake(stakeAmount).accounts({
             user: userB.publicKey,
-            globalConfig,
-            stakingPool,
-            userStake: userStakeB,
-            bonusPool,
-            referralPool,
             treasury: treasury.publicKey,
             materialDartWallet: materialDartWallet.publicKey,
             referrer: null,
-            systemProgram: anchor.web3.SystemProgram.programId,
         }).signers([userB]).rpc();
 
         // 3. Claim
@@ -285,10 +248,6 @@ describe("staking-express", () => {
 
         await program.methods.claimRewards().accounts({
             user: userA.publicKey,
-            globalConfig,
-            stakingPool,
-            userStake: userStakeA,
-            systemProgram: anchor.web3.SystemProgram.programId,
         }).signers([userA]).rpc();
 
         const balanceAfter = await provider.connection.getBalance(userA.publicKey);
@@ -334,15 +293,9 @@ describe("staking-express", () => {
 
         await program.methods.stake(stakeAmount).accounts({
             user: user.publicKey,
-            globalConfig,
-            stakingPool,
-            userStake,
-            bonusPool,
-            referralPool,
             treasury: treasury.publicKey,
             materialDartWallet: materialDartWallet.publicKey,
             referrer: referrer.publicKey, // Passed here
-            systemProgram: anchor.web3.SystemProgram.programId,
         }).signers([user]).rpc();
 
         // Verify Referrer got 50 BPS (0.5%) = 0.005 SOL = 5,000,000 lamports
@@ -372,15 +325,9 @@ describe("staking-express", () => {
 
         await program.methods.stake(new anchor.BN(1_000_000_000)).accounts({
             user: user.publicKey,
-            globalConfig,
-            stakingPool,
-            userStake,
-            bonusPool,
-            referralPool,
             treasury: treasury.publicKey,
             materialDartWallet: materialDartWallet.publicKey,
             referrer: null,
-            systemProgram: anchor.web3.SystemProgram.programId,
         }).signers([user]).rpc();
 
         bonusAccount = await program.account.bonusPool.fetch(bonusPool);
@@ -414,10 +361,6 @@ describe("staking-express", () => {
         // Distribute forced
         await program.methods.distributeReferralPool(true).accounts({
             authority: provider.wallet.publicKey,
-            globalConfig,
-            stakingPool,
-            referralPool,
-            systemProgram: anchor.web3.SystemProgram.programId,
         }).rpc();
 
         // Verify split
@@ -434,10 +377,6 @@ describe("staking-express", () => {
         try {
             await program.methods.distributeBonusPool().accounts({
                 caller: provider.wallet.publicKey,
-                globalConfig,
-                stakingPool,
-                bonusPool,
-                systemProgram: anchor.web3.SystemProgram.programId,
             }).rpc();
             expect.fail("Should have failed with BonusNotExpired");
         } catch (e) {

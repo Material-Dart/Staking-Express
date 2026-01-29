@@ -143,7 +143,7 @@ impl BonusPool {
 }
 
 /// Single entry in the last-10 circular buffer
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, Default)]
 pub struct LastTenInvestor {
     /// Investor's public key
     pub investor: Pubkey,
@@ -151,16 +151,6 @@ pub struct LastTenInvestor {
     /// Amount staked (for pro-rata distribution)
     pub amount: u64,
 }
-
-impl Default for LastTenInvestor {
-    fn default() -> Self {
-        Self {
-            investor: Pubkey::default(),
-            amount: 0,
-        }
-    }
-}
-
 /// Referral pool for accumulating referral fees
 /// PDA derived from ["referral_pool"]
 #[account]

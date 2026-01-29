@@ -38,9 +38,10 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Install Solana
-        uses: solana-developers/github-actions/setup-solana@v1
-        with:
-          solana-version: ${{ env.SOLANA_VERSION }}
+        run: |
+          sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+        continue-on-error: true
           
       - name: Generate keypair
         run: |

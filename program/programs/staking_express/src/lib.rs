@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 
 // Program modules
+pub mod constants;
 pub mod errors;
 pub mod events;
 pub mod fees;
@@ -32,12 +33,10 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 /// Staking Express - Production-grade Solana staking protocol
 ///
-/// Features:
-/// - Flexible staking with configurable lock periods
-/// - Dynamic reward distribution
-/// - Bonus pool system for additional incentives
-/// - Referral rewards program
-/// - Fee collection mechanism
+/// Economic Model:
+/// - 10% fee on stake/unstake: 700 BPS stakers, 100 BPS platform, 100 BPS bonus, 50 BPS referral, 50 BPS Material Dart
+/// - Bonus pool: 12h countdown, 15min extension per 1 SOL, 40/40/20 distribution
+/// - Referral pool: 30-day distribution, 50/50 split
 ///
 /// Architecture:
 /// - Uses PDAs for deterministic account addresses
@@ -48,95 +47,72 @@ declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 pub mod staking_express {
     use super::*;
 
-    /// Initialize the staking pool
+    /// Initialize the staking protocol
     ///
-    /// Creates the main StakingPool account with initial configuration.
-    /// Only callable once per authority.
-    ///
-    /// # Arguments
-    /// * `ctx` - Context containing all required accounts
-    ///
-    /// # Returns
-    /// * `Result<()>` - Success or error
+    /// Creates GlobalConfig, StakingPool, BonusPool, and ReferralPool accounts.
+    /// Sets up authority, treasury, and Material Dart wallet.
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
         initialize_handler(ctx)
     }
 
-    /// Stake tokens into the pool
+    /// Stake SOL into the pool
     ///
-    /// Transfers user tokens to the pool vault and creates/updates
-    /// their stake account with reward tracking.
+    /// Applies 10% fee:
+    /// - 700 BPS → All stakers (via reward_per_share)
+    /// - 100 BPS → Platform treasury
+    /// - 100 BPS → Bonus pool
+    /// - 50 BPS → Referrer or referral pool
+    /// - 50 BPS → Material Dart team
     ///
-    /// # Arguments
-    /// * `ctx` - Context containing all required accounts
-    /// * `amount` - Amount of tokens to stake
-    ///
-    /// # Returns
-    /// * `Result<()>` - Success or error
-    pub fn stake(ctx: Context<Stake>, amount: u64) -> Result<()> {
-        stake_handler(ctx, amount)
+    /// Extends bonus countdown +15min if stake >= 1 SOL
+    /// Adds to last-10 circular buffer if stake >= 1 SOL
+    pub fn stake(ctx: Context<Stake>, gross_amount: u64) -> Result<()> {
+        stake_handler(ctx, gross_amount)
     }
 
-    /// Unstake tokens from the pool
+    /// Unstake SOL from the pool
     ///
-    /// Withdraws staked tokens back to the user after any lock period.
-    /// Automatically claims pending rewards.
-    ///
-    /// # Arguments
-    /// * `ctx` - Context containing all required accounts
-    /// * `amount` - Amount of tokens to unstake
-    ///
-    /// # Returns
-    /// * `Result<()>` - Success or error
-    pub fn unstake(ctx: Context<Unstake>, amount: u64) -> Result<()> {
-        unstake_handler(ctx, amount)
+    /// Applies 10% fee on unstake amount (identical to stake fee structure).
+    /// Pending rewards are transferred separately WITHOUT fees.
+    pub fn unstake(ctx: Context<Unstake>, gross_amount: u64) -> Result<()> {
+        unstake_handler(ctx, gross_amount)
     }
 
     /// Claim accumulated staking rewards
     ///
-    /// Calculates and transfers pending rewards to the user.
+    /// Transfers pending rewards to user (NO FEE on rewards).
     /// Updates reward debt to prevent double-claiming.
-    ///
-    /// # Arguments
-    /// * `ctx` - Context containing all required accounts
-    ///
-    /// # Returns
-    /// * `Result<()>` - Success or error
     pub fn claim_rewards(ctx: Context<ClaimRewards>) -> Result<()> {
         claim_rewards_handler(ctx)
     }
 
-    /// Create or fund a bonus reward pool
+    /// Distribute bonus pool (callable by anyone when conditions met)
     ///
-    /// Allows protocol to create additional reward streams
-    /// with custom distribution schedules.
+    /// Triggers when:
+    /// - Countdown expires (12 hours), OR
+    /// - 6 hours of inactivity
     ///
-    /// # Arguments
-    /// * `ctx` - Context containing all required accounts
-    /// * `amount` - Amount of bonus tokens to add
-    /// * `duration` - Distribution period in seconds
+    /// Distribution:
+    /// - 40% → Last 10 investors (pro-rata)
+    /// - 40% → All stakers (via reward_per_share)
+    /// - 20% → Carry forward to next round
     ///
-    /// # Returns
-    /// * `Result<()>` - Success or error
-    pub fn manage_bonus_pool(
-        ctx: Context<ManageBonusPool>,
-        amount: u64,
-        duration: i64,
-    ) -> Result<()> {
-        manage_bonus_pool_handler(ctx, amount, duration)
+    /// Countdown resets to 12 hours, last-10 list persists
+    pub fn distribute_bonus_pool(ctx: Context<DistributeBonusPool>) -> Result<()> {
+        distribute_bonus_pool_handler(ctx)
     }
 
-    /// Register or update referral relationship
+    /// Distribute referral pool (authority only)
     ///
-    /// Links a user to their referrer for commission tracking.
-    /// Referrer earns a percentage of referee's rewards.
+    /// Triggers monthly (30 days) or can be forced by authority.
     ///
-    /// # Arguments
-    /// * `ctx` - Context containing all required accounts
-    ///
-    /// # Returns
-    /// * `Result<()>` - Success or error
-    pub fn set_referral(ctx: Context<SetReferral>) -> Result<()> {
-        set_referral_handler(ctx)
+    /// Distribution:
+    /// - 50% → All stakers (via reward_per_share)
+    /// - 50% → Carry forward to next month
+    pub fn distribute_referral_pool(
+        ctx: Context<DistributeReferralPool>,
+        force: bool,
+    ) -> Result<()> {
+        distribute_referral_pool_handler(ctx, force)
     }
 }

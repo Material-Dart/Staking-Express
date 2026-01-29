@@ -1,104 +1,110 @@
 use anchor_lang::prelude::*;
 
-/// Events emitted by the Staking Express protocol
-/// 
-/// These events are indexed by off-chain services for:
-/// - User dashboards
-/// - Analytics
-/// - Notifications
-/// - Historical data
-
-/// Emitted when the staking pool is initialized
+/// Event emitted when the protocol is initialized
 #[event]
-pub struct PoolInitialized {
-    /// Address of the staking pool
-    pub pool: Pubkey,
-    /// Authority that can manage the pool
+pub struct ProtocolInitialized {
     pub authority: Pubkey,
-    /// Reward rate per second (scaled by 1e9)
-    pub reward_rate: u64,
-    /// Timestamp of initialization
+    pub treasury: Pubkey,
+    pub material_dart_wallet: Pubkey,
     pub timestamp: i64,
 }
 
-/// Emitted when a user stakes tokens
+/// Event emitted when a user stakes SOL
 #[event]
 pub struct Staked {
-    /// User's wallet address
     pub user: Pubkey,
-    /// Staking pool address
-    pub pool: Pubkey,
-    /// Amount of tokens staked
-    pub amount: u64,
-    /// Total amount now staked by this user
-    pub total_staked: u64,
-    /// Timestamp of stake
+    pub gross_amount: u64,         // Amount before fees
+    pub net_amount: u64,           // Amount after 10% fee
+    pub fee_to_stakers: u64,       // 700 BPS
+    pub fee_to_platform: u64,      // 100 BPS
+    pub fee_to_bonus: u64,         // 100 BPS
+    pub fee_to_referral: u64,      // 50 BPS
+    pub fee_to_material_dart: u64, // 50 BPS
+    pub referrer: Option<Pubkey>,
+    pub total_staked_after: u64,
+    pub reward_per_share_after: u128,
     pub timestamp: i64,
 }
 
-/// Emitted when a user unstakes tokens
+/// Event emitted when a user unstakes SOL
 #[event]
 pub struct Unstaked {
-    /// User's wallet address
     pub user: Pubkey,
-    /// Staking pool address
-    pub pool: Pubkey,
-    /// Amount of tokens unstaked
-    pub amount: u64,
-    /// Remaining staked balance
-    pub remaining_staked: u64,
-    /// Timestamp of unstake
+    pub gross_amount: u64,    // Amount before fees
+    pub net_amount: u64,      // Amount after 10% fee
+    pub rewards_claimed: u64, // Rewards transferred (no fee)
+    pub fee_to_stakers: u64,
+    pub fee_to_platform: u64,
+    pub fee_to_bonus: u64,
+    pub fee_to_referral: u64,
+    pub fee_to_material_dart: u64,
+    pub total_staked_after: u64,
     pub timestamp: i64,
 }
 
-/// Emitted when rewards are claimed
+/// Event emitted when a user claims rewards
 #[event]
 pub struct RewardsClaimed {
-    /// User's wallet address
     pub user: Pubkey,
-    /// Staking pool address
-    pub pool: Pubkey,
-    /// Amount of rewards claimed
     pub amount: u64,
-    /// Timestamp of claim
+    pub reward_debt_after: u128,
     pub timestamp: i64,
 }
 
-/// Emitted when a bonus pool is created or funded
+/// Event emitted when bonus pool expires and distributes
 #[event]
-pub struct BonusPoolUpdated {
-    /// Bonus pool address
-    pub pool: Pubkey,
-    /// Amount added to the pool
-    pub amount: u64,
-    /// Distribution duration in seconds
-    pub duration: i64,
-    /// Start timestamp
-    pub start_time: i64,
-    /// End timestamp
-    pub end_time: i64,
-}
-
-/// Emitted when a referral relationship is established
-#[event]
-pub struct ReferralSet {
-    /// Referee (the person being referred)
-    pub referee: Pubkey,
-    /// Referrer (the person who referred)
-    pub referrer: Pubkey,
-    /// Timestamp when relationship was created
+pub struct BonusPoolExpired {
+    pub total_distributed: u64,
+    pub to_last_ten: u64,     // 40%
+    pub to_all_stakers: u64,  // 40%
+    pub carried_forward: u64, // 20%
+    pub last_ten_count: u8,
+    pub countdown_reset_to: i64,
     pub timestamp: i64,
 }
 
-/// Emitted when referral rewards are paid
+/// Event emitted when bonus countdown is extended
 #[event]
-pub struct ReferralRewardPaid {
-    /// Referrer receiving the reward
+pub struct BonusCountdownExtended {
+    pub extended_by: i64, // Seconds added
+    pub new_expiry: i64,
+    pub staker: Pubkey,
+    pub stake_amount: u64,
+    pub timestamp: i64,
+}
+
+/// Event emitted when referral commission is paid
+#[event]
+pub struct ReferralPaid {
     pub referrer: Pubkey,
-    /// Referee whose activity generated the reward
     pub referee: Pubkey,
-    /// Amount of referral reward
     pub amount: u64,
-    /// Timestamp of payment
+    pub timestamp: i64,
+}
+
+/// Event emitted when referral pool distributes monthly
+#[event]
+pub struct ReferralPoolDistributed {
+    pub total_distributed: u64,
+    pub to_stakers: u64,      // 50%
+    pub carried_forward: u64, // 50%
+    pub next_distribution: i64,
+    pub timestamp: i64,
+}
+
+/// Event emitted when an investor is added to last-10 list
+#[event]
+pub struct InvestorAddedToLastTen {
+    pub investor: Pubkey,
+    pub amount: u64,
+    pub position: u8,
+    pub timestamp: i64,
+}
+
+/// Event emitted when pool is paused/unpaused
+#[event]
+pub struct PoolPauseToggled {
+    pub paused: bool,
+    pub authority: Pubkey,
     pub timestamp: i64,
 }

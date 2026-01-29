@@ -1,173 +1,233 @@
 use anchor_lang::prelude::*;
 
-/// Main staking pool configuration and state
-/// 
-/// This account stores global protocol settings and is a PDA
-/// derived from ["staking_pool", authority].
+use crate::constants::*;
+
+/// Global configuration for the Staking Express protocol
+/// PDA derived from ["global_config"]
 #[account]
-pub struct StakingPool {
+pub struct GlobalConfig {
     /// Protocol authority (can update settings)
     pub authority: Pubkey,
-    
-    /// Token mint being staked
-    pub stake_mint: Pubkey,
-    
-    /// Token mint for rewards (can be same as stake_mint)
-    pub reward_mint: Pubkey,
-    
-    /// Vault holding staked tokens
-    pub stake_vault: Pubkey,
-    
-    /// Vault holding reward tokens
-    pub reward_vault: Pubkey,
-    
-    /// Total amount of tokens currently staked
-    pub total_staked: u64,
-    
-    /// Reward rate per second (scaled by 1e9 for precision)
-    /// Example: 1e9 = 1 token per second
-    pub reward_rate: u64,
-    
-    /// Last time rewards were updated
-    pub last_update_time: i64,
-    
-    /// Accumulated reward per token (scaled by 1e18)
-    pub reward_per_token_stored: u128,
-    
-    /// Fee percentage (basis points, 100 = 1%)
-    pub fee_basis_points: u16,
-    
-    /// Fee collector address
-    pub fee_collector: Pubkey,
-    
-    /// Whether the pool is paused
+
+    /// Treasury wallet for platform commission (100 BPS)
+    pub treasury: Pubkey,
+
+    /// Material Dart team wallet (50 BPS)
+    pub material_dart_wallet: Pubkey,
+
+    /// Whether the protocol is paused
     pub paused: bool,
-    
-    /// Minimum stake amount
-    pub min_stake_amount: u64,
-    
-    /// Lock duration in seconds (0 = no lock)
-    pub lock_duration: i64,
-    
-    /// Bump seed for PDA
+
+    pub bump: u8,
+}
+
+impl GlobalConfig {
+    pub const LEN: usize = 8 + // discriminator
+        32 + // authority
+        32 + // treasury
+        32 + // material_dart_wallet
+        1 +  // paused
+        1; // bump
+}
+
+/// Main staking pool state
+/// PDA derived from ["staking_pool"]
+#[account]
+pub struct StakingPool {
+    /// Global config account
+    pub config: Pubkey,
+
+    /// Total amount of SOL staked (net of fees)
+    pub total_staked: u64,
+
+    /// Accumulated reward per share (scaled by REWARD_PRECISION = 1e12)
+    /// Formula: reward_per_share += (fee_amount * REWARD_PRECISION) / total_staked
+    pub reward_per_share: u128,
+
+    /// Last timestamp when pool was updated
+    pub last_update_timestamp: i64,
+
     pub bump: u8,
 }
 
 impl StakingPool {
-    /// Size calculation for account allocation
-    /// 
-    /// Discriminator (8) + all fields
-    pub const LEN: usize = 8 + 32 + 32 + 32 + 32 + 32 + 8 + 8 + 8 + 16 + 2 + 32 + 1 + 8 + 8 + 1;
+    pub const LEN: usize = 8 +  // discriminator
+        32 + // config
+        8 +  // total_staked
+        16 + // reward_per_share (u128)
+        8 +  // last_update_timestamp
+        1; // bump
 }
 
-/// User's staking position
-/// 
-/// PDA derived from ["stake_account", user, pool]
+/// User's individual staking position
+/// PDA derived from ["user_stake", user, staking_pool]
 #[account]
-pub struct StakeAccount {
-    /// Owner of this stake account
-    pub owner: Pubkey,
-    
-    /// Staking pool this account belongs to
+pub struct UserStakeState {
+    /// Owner of this stake position
+    pub user: Pubkey,
+
+    /// Staking pool this belongs to
     pub pool: Pubkey,
-    
-    /// Amount of tokens staked
-    pub amount: u64,
-    
-    /// Reward debt (for reward calculation)
+
+    /// Amount of SOL staked (net amount after 10% fee)
+    pub staked_amount: u64,
+
+    /// Reward debt for reward calculation
+    /// Formula: reward_debt = staked_amount * reward_per_share / REWARD_PRECISION
     /// Prevents double-claiming when stake changes
     pub reward_debt: u128,
-    
-    /// Last time user claimed rewards
-    pub last_claim_time: i64,
-    
-    /// Time when tokens were staked (for lock period)
-    pub stake_time: i64,
-    
-    /// Referrer address (if any)
+
+    /// Timestamp when user first staked
+    pub stake_timestamp: i64,
+
+    /// Last timestamp when user claimed rewards
+    pub last_claim_timestamp: i64,
+
+    /// Referrer address (if user was referred)
     pub referrer: Option<Pubkey>,
-    
-    /// Bump seed for PDA
+
     pub bump: u8,
 }
 
-impl StakeAccount {
-    /// Size calculation for account allocation
-    pub const LEN: usize = 8 + 32 + 32 + 8 + 16 + 8 + 8 + 33 + 1;
+impl UserStakeState {
+    pub const LEN: usize = 8 +  // discriminator
+        32 + // user
+        32 + // pool
+        8 +  // staked_amount
+        16 + // reward_debt (u128)
+        8 +  // stake_timestamp
+        8 +  // last_claim_timestamp
+        33 + // referrer (Option<Pubkey>)
+        1; // bump
 }
 
-/// Bonus reward pool for additional incentives
-/// 
-/// PDA derived from ["bonus_pool", pool_id]
+/// Bonus pool with countdown mechanism
+/// PDA derived from ["bonus_pool"]
 #[account]
 pub struct BonusPool {
-    /// Unique identifier for this bonus pool
-    pub pool_id: u64,
-    
-    /// Main staking pool this bonus is for
+    /// Staking pool this bonus pool belongs to
     pub staking_pool: Pubkey,
-    
-    /// Token mint for bonus rewards
-    pub bonus_mint: Pubkey,
-    
-    /// Vault holding bonus tokens
-    pub bonus_vault: Pubkey,
-    
-    /// Total bonus tokens allocated
-    pub total_bonus: u64,
-    
-    /// Bonus tokens distributed so far
-    pub distributed: u64,
-    
-    /// Start time for distribution
-    pub start_time: i64,
-    
-    /// End time for distribution
-    pub end_time: i64,
-    
-    /// Bonus rate per second
-    pub bonus_rate: u64,
-    
-    /// Bump seed for PDA
+
+    /// Current balance in bonus pool (lamports)
+    pub balance: u64,
+
+    /// Countdown expiry timestamp (12 hours initially)
+    pub expiry_timestamp: i64,
+
+    /// Last investment timestamp (for 6-hour inactivity check)
+    pub last_investment_timestamp: i64,
+
+    /// Circular buffer: last 10 investors
+    /// Only updated when deposit >= 1 SOL
+    pub last_ten_investors: [LastTenInvestor; MAX_LAST_TEN_INVESTORS],
+
+    /// Current position in circular buffer (0-9)
+    pub current_position: u8,
+
+    /// Number of investors in buffer (0-10)
+    pub investor_count: u8,
+
     pub bump: u8,
 }
 
 impl BonusPool {
-    pub const LEN: usize = 8 + 8 + 32 + 32 + 32 + 8 + 8 + 8 + 8 + 8 + 1;
+    pub const LEN: usize = 8 +   // discriminator
+        32 +  // staking_pool
+        8 +   // balance
+        8 +   // expiry_timestamp
+        8 +   // last_investment_timestamp
+        (40 * MAX_LAST_TEN_INVESTORS) + // last_ten_investors array
+        1 +   // current_position
+        1 +   // investor_count
+        1; // bump
 }
 
-/// Referral tracking account
-/// 
-/// PDA derived from ["referral", referrer]
+/// Single entry in the last-10 circular buffer
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug)]
+pub struct LastTenInvestor {
+    /// Investor's public key
+    pub investor: Pubkey,
+
+    /// Amount staked (for pro-rata distribution)
+    pub amount: u64,
+}
+
+impl Default for LastTenInvestor {
+    fn default() -> Self {
+        Self {
+            investor: Pubkey::default(),
+            amount: 0,
+        }
+    }
+}
+
+/// Referral pool for accumulating referral fees
+/// PDA derived from ["referral_pool"]
 #[account]
-pub struct ReferralAccount {
-    /// The referrer's address
-    pub referrer: Pubkey,
-    
-    /// Number of users referred
-    pub referral_count: u32,
-    
-    /// Total rewards earned from referrals
-    pub total_earned: u64,
-    
-    /// Timestamp of first referral
-    pub created_at: i64,
-    
-    /// Bump seed for PDA
+pub struct ReferralPool {
+    /// Staking pool this referral pool belongs to
+    pub staking_pool: Pubkey,
+
+    /// Current balance in referral pool (lamports)
+    /// Accumulates 50 BPS from users who join without referrer
+    pub balance: u64,
+
+    /// Next distribution timestamp (30 days from last distribution)
+    pub next_distribution_timestamp: i64,
+
+    /// Last distribution timestamp
+    pub last_distribution_timestamp: i64,
+
+    /// Total distributed so far
+    pub total_distributed: u64,
+
     pub bump: u8,
 }
 
-impl ReferralAccount {
-    pub const LEN: usize = 8 + 32 + 4 + 8 + 8 + 1;
+impl ReferralPool {
+    pub const LEN: usize = 8 +  // discriminator
+        32 + // staking_pool
+        8 +  // balance
+        8 +  // next_distribution_timestamp
+        8 +  // last_distribution_timestamp
+        8 +  // total_distributed
+        1; // bump
+}
+
+/// Individual referrer tracking account
+/// PDA derived from ["referrer", referrer_pubkey]
+#[account]
+pub struct ReferrerAccount {
+    /// Referrer's public key
+    pub referrer: Pubkey,
+
+    /// Number of users referred
+    pub referral_count: u32,
+
+    /// Total rewards earned from referrals
+    pub total_earned: u64,
+
+    /// Timestamp when first referral was made
+    pub created_at: i64,
+
+    pub bump: u8,
+}
+
+impl ReferrerAccount {
+    pub const LEN: usize = 8 +  // discriminator
+        32 + // referrer
+        4 +  // referral_count
+        8 +  // total_earned
+        8 +  // created_at
+        1; // bump
 }
 
 /// PDA seeds for deterministic address derivation
 pub mod seeds {
+    pub const GLOBAL_CONFIG: &[u8] = b"global_config";
     pub const STAKING_POOL: &[u8] = b"staking_pool";
-    pub const STAKE_ACCOUNT: &[u8] = b"stake_account";
+    pub const USER_STAKE: &[u8] = b"user_stake";
     pub const BONUS_POOL: &[u8] = b"bonus_pool";
-    pub const REFERRAL: &[u8] = b"referral";
-    pub const STAKE_VAULT: &[u8] = b"stake_vault";
-    pub const REWARD_VAULT: &[u8] = b"reward_vault";
-    pub const BONUS_VAULT: &[u8] = b"bonus_vault";
+    pub const REFERRAL_POOL: &[u8] = b"referral_pool";
+    pub const REFERRER: &[u8] = b"referrer";
 }

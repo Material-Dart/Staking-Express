@@ -1,60 +1,92 @@
 use anchor_lang::prelude::*;
 
-/// Custom error codes for the Staking Express protocol
-/// 
-/// These errors provide specific feedback for debugging and user experience.
-/// Each error is assigned a unique code starting from 6000 (Anchor convention).
+/// Custom error codes for Staking Express protocol
+/// Error codes start at 6000 as per Anchor convention
 #[error_code]
 pub enum StakingError {
-    /// Attempted operation with invalid amount (zero or exceeds limit)
-    #[msg("Invalid amount provided")]
-    InvalidAmount,
+    // ==================== Math Errors (6000-6009) ====================
+    #[msg("Arithmetic overflow occurred")]
+    MathOverflow,
 
-    /// Tried to unstake more than currently staked
+    #[msg("Arithmetic underflow occurred")]
+    MathUnderflow,
+
+    #[msg("Division by zero")]
+    DivisionByZero,
+
+    #[msg("Invalid calculation result")]
+    InvalidCalculation,
+
+    // ==================== Validation Errors (6010-6029) ====================
+    #[msg("Stake amount is below minimum (0.01 SOL)")]
+    StakeTooSmall,
+
+    #[msg("Unstake amount is below minimum (0.01 SOL)")]
+    UnstakeTooSmall,
+
     #[msg("Insufficient staked balance")]
     InsufficientStake,
 
-    /// Attempted to withdraw before lock period expires
-    #[msg("Tokens are still locked")]
-    StillLocked,
+    #[msg("No rewards available to claim")]
+    NoRewardsAvailable,
 
-    /// Pool has insufficient funds to pay rewards
-    #[msg("Insufficient rewards in pool")]
-    InsufficientRewards,
+    #[msg("Invalid fee breakdown - components do not sum to 1000 BPS")]
+    InvalidFeeBreakdown,
 
-    /// Arithmetic operation would overflow
-    #[msg("Calculation overflow")]
-    Overflow,
+    #[msg("Invalid amount - must be greater than zero")]
+    InvalidAmount,
 
-    /// Arithmetic operation would underflow
-    #[msg("Calculation underflow")]
-    Underflow,
+    #[msg("Invalid timestamp")]
+    InvalidTimestamp,
 
-    /// Pool is paused by admin
+    // ==================== State Errors (6030-6049) ====================
     #[msg("Staking pool is paused")]
     PoolPaused,
 
-    /// Unauthorized access attempt
-    #[msg("Unauthorized")]
+    #[msg("Bonus pool countdown has not expired")]
+    BonusNotExpired,
+
+    #[msg("Bonus pool is empty")]
+    BonusPoolEmpty,
+
+    #[msg("Referral pool distribution period has not ended")]
+    ReferralPeriodNotEnded,
+
+    #[msg("User has no staked position")]
+    NoStakePosition,
+
+    #[msg("Total staked invariant violated")]
+    TotalStakedInvariantViolation,
+
+    #[msg("Reward per share invariant violated")]
+    RewardPerShareInvariantViolation,
+
+    #[msg("Circular buffer is full")]
+    CircularBufferFull,
+
+    // ==================== Authorization Errors (6050-6059) ====================
+    #[msg("Unauthorized: caller is not the authority")]
     Unauthorized,
 
-    /// Invalid configuration parameter
-    #[msg("Invalid configuration")]
-    InvalidConfig,
+    #[msg("Invalid authority account")]
+    InvalidAuthority,
 
-    /// Referral relationship already exists
-    #[msg("Referral already set")]
-    ReferralAlreadySet,
+    #[msg("Invalid treasury account")]
+    InvalidTreasury,
 
-    /// Cannot refer yourself
-    #[msg("Cannot refer yourself")]
-    SelfReferral,
+    #[msg("Invalid Material Dart wallet")]
+    InvalidMaterialDartWallet,
 
-    /// Bonus pool has ended
-    #[msg("Bonus pool distribution has ended")]
-    BonusPoolEnded,
+    // ==================== Account Errors (6060-6069) ====================
+    #[msg("Invalid PDA derivation")]
+    InvalidPDA,
 
-    /// Invalid timestamp (future or past limit exceeded)
-    #[msg("Invalid timestamp")]
-    InvalidTimestamp,
+    #[msg("Account already initialized")]
+    AlreadyInitialized,
+
+    #[msg("Account not initialized")]
+    NotInitialized,
+
+    #[msg("Invalid account owner")]
+    InvalidAccountOwner,
 }

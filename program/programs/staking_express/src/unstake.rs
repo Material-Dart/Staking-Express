@@ -1,49 +1,273 @@
-use crate::state::*;
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Token, TokenAccount};
+use anchor_lang::system_program::{transfer, Transfer};
 
-/// Unstake tokens from the pool
-///
-/// Withdraws staked tokens back to user after lock period.
+use crate::constants::*;
+use crate::errors::StakingError;
+use crate::events::*;
+use crate::fees::*;
+use crate::helpers::*;
+use crate::math::*;
+use crate::state::*;
 
 #[derive(Accounts)]
 pub struct Unstake<'info> {
-    /// User unstaking tokens
     #[account(mut)]
     pub user: Signer<'info>,
 
-    /// Staking pool
-    #[account(mut)]
-    pub staking_pool: Account<'info, StakingPool>,
+    /// Global configuration
+    #[account(
+        seeds = [seeds::GLOBAL_CONFIG],
+        bump = global_config.bump,
+        constraint = !global_config.paused @ StakingError::PoolPaused
+    )]
+    pub global_config: Account<'info, GlobalConfig>,
 
-    /// User's stake account
+    /// Staking pool
     #[account(
         mut,
-        seeds = [seeds::STAKE_ACCOUNT, user.key().as_ref(), staking_pool.key().as_ref()],
-        bump = stake_account.bump
+        seeds = [seeds::STAKING_POOL],
+        bump = staking_pool.bump
     )]
-    pub stake_account: Account<'info, StakeAccount>,
+    pub staking_pool: Account<'info, StakingPool>,
 
-    /// User's token account (destination)
-    #[account(mut)]
-    pub user_token_account: Account<'info, TokenAccount>,
+    /// User's stake state
+    #[account(
+        mut,
+        seeds = [seeds::USER_STAKE, user.key().as_ref(), staking_pool.key().as_ref()],
+        bump = user_stake.bump,
+        constraint = user_stake.user == user.key() @ StakingError::Unauthorized
+    )]
+    pub user_stake: Account<'info, UserStakeState>,
 
-    /// Pool's stake vault (source)
-    #[account(mut)]
-    pub stake_vault: Account<'info, TokenAccount>,
+    /// Bonus pool (receives 100 BPS)
+    #[account(
+        mut,
+        seeds = [seeds::BONUS_POOL],
+        bump = bonus_pool.bump
+    )]
+    pub bonus_pool: Account<'info, BonusPool>,
 
-    pub token_program: Program<'info, Token>,
+    /// Referral pool (receives 50 BPS if no referrer)
+    #[account(
+        mut,
+        seeds = [seeds::REFERRAL_POOL],
+        bump = referral_pool.bump
+    )]
+    pub referral_pool: Account<'info, ReferralPool>,
+
+    /// Staking pool account (PDA, holds staker funds)
+    #[account(
+        mut,
+        seeds = [seeds::STAKING_POOL],
+        bump = staking_pool.bump
+    )]
+    pub pool_vault: Account<'info, StakingPool>,
+
+    /// Treasury wallet (receives 100 BPS)
+    /// CHECK: Validated against global_config
+    #[account(
+        mut,
+        constraint = treasury.key() == global_config.treasury @ StakingError::InvalidTreasury
+    )]
+    pub treasury: UncheckedAccount<'info>,
+
+    /// Material Dart wallet (receives 50 BPS)
+    /// CHECK: Validated against global_config
+    #[account(
+        mut,
+        constraint = material_dart_wallet.key() == global_config.material_dart_wallet @ StakingError::InvalidMaterialDartWallet
+    )]
+    pub material_dart_wallet: UncheckedAccount<'info>,
+
+    /// Optional referrer (if user was referred)
+    /// CHECK: Taken from user_stake.referrer
+    pub referrer: Option<UncheckedAccount<'info>>,
+
+    pub system_program: Program<'info, System>,
 }
 
-pub fn unstake_handler(_ctx: Context<Unstake>, amount: u64) -> Result<()> {
-    // TODO: Implement unstaking logic in Phase 2
-    // - Check lock period
-    // - Validate amount <= staked
-    // - Update reward tracking
-    // - Transfer tokens from vault
-    // - Update stake account
-    // - Emit Unstaked event
+pub fn unstake_handler(ctx: Context<Unstake>, gross_unstake_amount: u64) -> Result<()> {
+    // Validate minimum unstake
+    require!(
+        gross_unstake_amount >= MIN_UNSTAKE,
+        StakingError::UnstakeTooSmall
+    );
 
-    msg!("Unstake instruction - scaffolding only. Amount: {}", amount);
+    let user_key = ctx.accounts.user.key();
+    let staking_pool = &mut ctx.accounts.staking_pool;
+    let user_stake = &mut ctx.accounts.user_stake;
+    let bonus_pool = &mut ctx.accounts.bonus_pool;
+    let referral_pool = &mut ctx.accounts.referral_pool;
+    let current_timestamp = get_current_timestamp()?;
+
+    // Validate user has sufficient staked balance
+    require!(
+        user_stake.staked_amount >= gross_unstake_amount,
+        StakingError::InsufficientStake
+    );
+
+    // ========== CALCULATE PENDING REWARDS (NO FEE) ==========
+    let pending_rewards = get_pending_rewards(user_stake, staking_pool)?;
+
+    // ========== CALCULATE UNSTAKE FEE (10%) ==========
+    let fees = calculate_unstake_fee(gross_unstake_amount)?;
+    verify_fee_breakdown(&fees)?;
+
+    // ========== FEE DISTRIBUTION (FROM UNSTAKE AMOUNT) ==========
+
+    // Fees are deducted from the unstaked amount
+    // User receives: pending_rewards (no fee) + net_unstake_amount (90%)
+
+    // 1. Transfer 100 BPS to treasury
+    let pool_pda_seeds = &[seeds::STAKING_POOL, &[staking_pool.bump]];
+    transfer(
+        CpiContext::new_with_signer(
+            ctx.accounts.system_program.to_account_info(),
+            Transfer {
+                from: staking_pool.to_account_info(),
+                to: ctx.accounts.treasury.to_account_info(),
+            },
+            &[pool_pda_seeds],
+        ),
+        fees.platform,
+    )?;
+
+    // 2. Transfer 50 BPS to Material Dart
+    transfer(
+        CpiContext::new_with_signer(
+            ctx.accounts.system_program.to_account_info(),
+            Transfer {
+                from: staking_pool.to_account_info(),
+                to: ctx.accounts.material_dart_wallet.to_account_info(),
+            },
+            &[pool_pda_seeds],
+        ),
+        fees.material_dart,
+    )?;
+
+    // 3. Transfer 100 BPS to bonus pool
+    transfer(
+        CpiContext::new_with_signer(
+            ctx.accounts.system_program.to_account_info(),
+            Transfer {
+                from: staking_pool.to_account_info(),
+                to: bonus_pool.to_account_info(),
+            },
+            &[pool_pda_seeds],
+        ),
+        fees.bonus_pool,
+    )?;
+    bonus_pool.balance = safe_add(bonus_pool.balance, fees.bonus_pool)?;
+
+    // 4. Handle referral (50 BPS)
+    if let Some(referrer_pubkey) = user_stake.referrer {
+        if let Some(ref referrer_account) = ctx.accounts.referrer {
+            require!(
+                referrer_account.key() == referrer_pubkey,
+                StakingError::InvalidAccountOwner // Or a more specific error
+            );
+
+            // Pay referrer directly
+            transfer(
+                CpiContext::new_with_signer(
+                    ctx.accounts.system_program.to_account_info(),
+                    Transfer {
+                        from: staking_pool.to_account_info(),
+                        to: referrer_account.to_account_info(),
+                    },
+                    &[pool_pda_seeds],
+                ),
+                fees.referral,
+            )?;
+        } else {
+            return Err(StakingError::InvalidAmount.into());
+        }
+    } else {
+        // No referrer - add to referral pool
+        transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.system_program.to_account_info(),
+                Transfer {
+                    from: staking_pool.to_account_info(),
+                    to: referral_pool.to_account_info(),
+                },
+                &[pool_pda_seeds],
+            ),
+            fees.referral,
+        )?;
+        referral_pool.balance = safe_add(referral_pool.balance, fees.referral)?;
+    }
+
+    // 5. Update reward_per_share with 700 BPS for remaining stakers
+    if staking_pool.total_staked > gross_unstake_amount {
+        update_reward_per_share(staking_pool, fees.stakers)?;
+    }
+
+    // ========== TRANSFER TO USER ==========
+
+    // Transfer pending rewards (NO FEE)
+    if pending_rewards > 0 {
+        transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.system_program.to_account_info(),
+                Transfer {
+                    from: staking_pool.to_account_info(),
+                    to: ctx.accounts.user.to_account_info(),
+                },
+                &[pool_pda_seeds],
+            ),
+            pending_rewards,
+        )?;
+    }
+
+    // Transfer net unstake amount (90%)
+    transfer(
+        CpiContext::new_with_signer(
+            ctx.accounts.system_program.to_account_info(),
+            Transfer {
+                from: staking_pool.to_account_info(),
+                to: ctx.accounts.user.to_account_info(),
+            },
+            &[pool_pda_seeds],
+        ),
+        fees.net_amount,
+    )?;
+
+    // ========== UPDATE STATE ==========
+
+    // Update user's staked amount
+    user_stake.staked_amount = safe_sub(user_stake.staked_amount, gross_unstake_amount)?;
+
+    // Update reward debt
+    user_stake.reward_debt =
+        calculate_reward_debt(user_stake.staked_amount, staking_pool.reward_per_share)?;
+
+    // Update pool's total staked
+    staking_pool.total_staked = safe_sub(staking_pool.total_staked, gross_unstake_amount)?;
+    staking_pool.last_update_timestamp = current_timestamp;
+
+    // ========== EMIT EVENT ==========
+
+    emit!(Unstaked {
+        user: user_key,
+        gross_amount: gross_unstake_amount,
+        net_amount: fees.net_amount,
+        rewards_claimed: pending_rewards,
+        fee_to_stakers: fees.stakers,
+        fee_to_platform: fees.platform,
+        fee_to_bonus: fees.bonus_pool,
+        fee_to_referral: fees.referral,
+        fee_to_material_dart: fees.material_dart,
+        total_staked_after: staking_pool.total_staked,
+        timestamp: current_timestamp,
+    });
+
+    msg!("✅ Unstake successful!");
+    msg!("User: {}", user_key);
+    msg!("Unstaked: {} lamports", gross_unstake_amount);
+    msg!("Rewards claimed: {} lamports (NO FEE)", pending_rewards);
+    msg!("Net received: {} lamports (90%)", fees.net_amount);
+    msg!("Unstake fee: {} lamports (10%)", fees.total_fee);
+
     Ok(())
 }

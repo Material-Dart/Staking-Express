@@ -1,54 +1,90 @@
-use crate::state::*;
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Token, TokenAccount};
+use anchor_lang::system_program::{transfer, Transfer};
 
-/// Claim accumulated staking rewards
-///
-/// Calculates and transfers pending rewards to the user.
+use crate::errors::StakingError;
+use crate::events::*;
+use crate::helpers::*;
+use crate::math::*;
+use crate::state::*;
 
 #[derive(Accounts)]
 pub struct ClaimRewards<'info> {
-    /// User claiming rewards
     #[account(mut)]
     pub user: Signer<'info>,
 
-    /// Staking pool
-    #[account(mut)]
-    pub staking_pool: Account<'info, StakingPool>,
+    /// Global configuration
+    #[account(
+        seeds = [seeds::GLOBAL_CONFIG],
+        bump = global_config.bump,
+        constraint = !global_config.paused @ StakingError::PoolPaused
+    )]
+    pub global_config: Account<'info, GlobalConfig>,
 
-    /// User's stake account
+    /// Staking pool
     #[account(
         mut,
-        seeds = [seeds::STAKE_ACCOUNT, user.key().as_ref(), staking_pool.key().as_ref()],
-        bump = stake_account.bump
+        seeds = [seeds::STAKING_POOL],
+        bump = staking_pool.bump
     )]
-    pub stake_account: Account<'info, StakeAccount>,
+    pub staking_pool: Account<'info, StakingPool>,
 
-    /// User's reward token account (destination)
-    #[account(mut)]
-    pub user_reward_account: Account<'info, TokenAccount>,
+    /// User's stake state
+    #[account(
+        mut,
+        seeds = [seeds::USER_STAKE, user.key().as_ref(), staking_pool.key().as_ref()],
+        bump = user_stake.bump,
+        constraint = user_stake.user == user.key() @ StakingError::Unauthorized
+    )]
+    pub user_stake: Account<'info, UserStakeState>,
 
-    /// Pool's reward vault (source)
-    #[account(mut)]
-    pub reward_vault: Account<'info, TokenAccount>,
-
-    /// Fee collector's token account
-    #[account(mut)]
-    pub fee_collector_account: Account<'info, TokenAccount>,
-
-    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
 }
 
-pub fn claim_rewards_handler(_ctx: Context<ClaimRewards>) -> Result<()> {
-    // TODO: Implement reward claiming logic in Phase 2
-    // - Calculate pending rewards
-    // - Deduct fees
-    // - Transfer rewards to user
-    // - Transfer fees to collector
-    // - Update reward debt
-    // - Handle referral rewards
-    // - Emit RewardsClaimed event
+pub fn claim_rewards_handler(ctx: Context<ClaimRewards>) -> Result<()> {
+    let user_key = ctx.accounts.user.key();
+    let staking_pool = &mut ctx.accounts.staking_pool;
+    let user_stake = &mut ctx.accounts.user_stake;
+    let current_timestamp = get_current_timestamp()?;
 
-    msg!("ClaimRewards instruction - scaffolding only");
+    // Calculate pending rewards
+    let pending_rewards = get_pending_rewards(user_stake, staking_pool)?;
+
+    // Validate rewards available
+    require!(pending_rewards > 0, StakingError::NoRewardsAvailable);
+
+    // Transfer rewards to user (NO FEE)
+    let pool_pda_seeds = &[seeds::STAKING_POOL, &[staking_pool.bump]];
+
+    transfer(
+        CpiContext::new_with_signer(
+            ctx.accounts.system_program.to_account_info(),
+            Transfer {
+                from: staking_pool.to_account_info(),
+                to: ctx.accounts.user.to_account_info(),
+            },
+            &[pool_pda_seeds],
+        ),
+        pending_rewards,
+    )?;
+
+    // Update reward debt to prevent double claims
+    user_stake.reward_debt =
+        calculate_reward_debt(user_stake.staked_amount, staking_pool.reward_per_share)?;
+
+    // Update last claim timestamp
+    user_stake.last_claim_timestamp = current_timestamp;
+
+    // Emit event
+    emit!(RewardsClaimed {
+        user: user_key,
+        amount: pending_rewards,
+        reward_debt_after: user_stake.reward_debt,
+        timestamp: current_timestamp,
+    });
+
+    msg!("✅ Rewards claimed successfully!");
+    msg!("User: {}", user_key);
+    msg!("Rewards: {} lamports", pending_rewards);
+
     Ok(())
 }

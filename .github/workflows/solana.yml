@@ -38,9 +38,14 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Install Solana
+        uses: dsoftwareinc/setup-solana@v1
+        with:
+          solana-version: ${{ env.SOLANA_VERSION }}
+          
+      - name: Generate keypair
         run: |
-          sh -c "$(curl -sSfL https://release.solana.com/${{ env.SOLANA_VERSION }}/install)"
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          mkdir -p ~/.config/solana
+          solana-keygen new --no-passphrase --outfile ~/.config/solana/id.json
 
       - name: Install Anchor
         run: |
@@ -50,7 +55,7 @@ jobs:
 
       - name: Install Dependencies
         working-directory: ./program
-        run: yarn install
+        run: npm ci
 
       - name: Build Program
         working-directory: ./program

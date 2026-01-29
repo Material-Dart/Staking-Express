@@ -45,11 +45,6 @@ jobs:
           
       - name: Verify Solana Version
         run: solana --version
-          
-      - name: Generate keypair
-        run: |
-          mkdir -p ~/.config/solana
-          solana-keygen new --no-passphrase --outfile ~/.config/solana/id.json
 
       - name: Install Anchor
         run: |

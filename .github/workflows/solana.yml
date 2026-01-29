@@ -38,7 +38,7 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Install Solana
-        uses: dsoftwareinc/setup-solana@v1
+        uses: metaplex-foundation/setup-solana@v1
         with:
           solana-version: ${{ env.SOLANA_VERSION }}
           

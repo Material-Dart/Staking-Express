@@ -117,7 +117,9 @@ pub fn distribute_bonus_pool_handler(ctx: Context<DistributeBonusPool>) -> Resul
     );
 
     // Reset countdown to 12 hours
-    bonus_pool.expiry_timestamp = current_timestamp + BONUS_INITIAL_COUNTDOWN;
+    bonus_pool.expiry_timestamp = current_timestamp
+        .checked_add(BONUS_INITIAL_COUNTDOWN)
+        .ok_or(StakingError::MathOverflow)?;
     bonus_pool.last_investment_timestamp = current_timestamp;
 
     // NOTE: Do NOT clear last-10 list (persists until 1+ SOL deposit)

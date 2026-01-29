@@ -56,25 +56,28 @@ pub struct Stake<'info> {
     )]
     pub referral_pool: Account<'info, ReferralPool>,
 
-    /// Treasury wallet (receives 100 BPS)
-    /// CHECK: Validated against global_config
+    /// CHECK: Validated against global_config and owner checked
     #[account(
         mut,
+        owner = anchor_lang::solana_program::system_program::ID,
         constraint = treasury.key() == global_config.treasury @ StakingError::InvalidTreasury
     )]
     pub treasury: UncheckedAccount<'info>,
 
-    /// Material Dart wallet (receives 50 BPS)
-    /// CHECK: Validated against global_config
+    /// CHECK: Validated against global_config and owner checked
     #[account(
         mut,
+        owner = anchor_lang::solana_program::system_program::ID,
         constraint = material_dart_wallet.key() == global_config.material_dart_wallet @ StakingError::InvalidMaterialDartWallet
     )]
     pub material_dart_wallet: UncheckedAccount<'info>,
 
     /// Optional referrer (if user was referred)
     /// CHECK: Validated against user input or stored logic
-    #[account(mut)]
+    #[account(
+        mut,
+        owner = anchor_lang::solana_program::system_program::ID
+    )]
     pub referrer: Option<UncheckedAccount<'info>>,
 
     pub system_program: Program<'info, System>,

@@ -83,8 +83,9 @@ pub fn distribute_referral_pool_handler(
     // ========== RESET 30-DAY TIMER ==========
 
     referral_pool.last_distribution_timestamp = current_timestamp;
-    referral_pool.next_distribution_timestamp =
-        current_timestamp + crate::constants::REFERRAL_DISTRIBUTION_PERIOD;
+    referral_pool.next_distribution_timestamp = current_timestamp
+        .checked_add(crate::constants::REFERRAL_DISTRIBUTION_PERIOD)
+        .ok_or(StakingError::MathOverflow)?;
 
     // ========== EMIT EVENT ==========
 

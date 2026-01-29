@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 
 use crate::constants::*;
+use crate::errors::StakingError;
 use crate::events::*;
 use crate::helpers::*;
 use crate::state::*;
@@ -50,12 +51,12 @@ pub struct Initialize<'info> {
     )]
     pub referral_pool: Account<'info, ReferralPool>,
 
-    /// Treasury wallet (receives 100 BPS platform commission)
-    /// CHECK: This is just a wallet that receives SOL
+    /// CHECK: Validated against owner
+    #[account(owner = anchor_lang::solana_program::system_program::ID)]
     pub treasury: UncheckedAccount<'info>,
 
-    /// Material Dart team wallet (receives 50 BPS)
-    /// CHECK: This is just a wallet that receives SOL
+    /// CHECK: Validated against owner
+    #[account(owner = anchor_lang::solana_program::system_program::ID)]
     pub material_dart_wallet: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
@@ -90,7 +91,9 @@ pub fn initialize_handler(ctx: Context<Initialize>) -> Result<()> {
     // Initialize BonusPool with 12-hour countdown
     bonus_pool.staking_pool = staking_pool.key();
     bonus_pool.balance = 0;
-    bonus_pool.expiry_timestamp = current_timestamp + BONUS_INITIAL_COUNTDOWN;
+    bonus_pool.expiry_timestamp = current_timestamp
+        .checked_add(BONUS_INITIAL_COUNTDOWN)
+        .ok_or(StakingError::MathOverflow)?;
     bonus_pool.last_investment_timestamp = current_timestamp;
     bonus_pool.last_ten_investors = [LastTenInvestor::default(); MAX_LAST_TEN_INVESTORS];
     bonus_pool.current_position = 0;
@@ -100,7 +103,9 @@ pub fn initialize_handler(ctx: Context<Initialize>) -> Result<()> {
     // Initialize ReferralPool with 30-day distribution period
     referral_pool.staking_pool = staking_pool.key();
     referral_pool.balance = 0;
-    referral_pool.next_distribution_timestamp = current_timestamp + REFERRAL_DISTRIBUTION_PERIOD;
+    referral_pool.next_distribution_timestamp = current_timestamp
+        .checked_add(REFERRAL_DISTRIBUTION_PERIOD)
+        .ok_or(StakingError::MathOverflow)?;
     referral_pool.last_distribution_timestamp = current_timestamp;
     referral_pool.total_distributed = 0;
     referral_pool.bump = ctx.bumps.referral_pool;

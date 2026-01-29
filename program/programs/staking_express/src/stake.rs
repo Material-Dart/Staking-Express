@@ -11,13 +11,17 @@ use crate::state::*;
 
 #[derive(Accounts)]
 pub struct Stake<'info> {
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = user.to_account_info().owner == &anchor_lang::solana_program::system_program::ID @ StakingError::InvalidAccountOwner
+    )]
     pub user: Signer<'info>,
 
     /// Global configuration
     #[account(
         seeds = [seeds::GLOBAL_CONFIG],
         bump = global_config.bump,
+        owner = crate::ID,
         constraint = !global_config.paused @ StakingError::PoolPaused
     )]
     pub global_config: Account<'info, GlobalConfig>,
@@ -26,7 +30,8 @@ pub struct Stake<'info> {
     #[account(
         mut,
         seeds = [seeds::STAKING_POOL],
-        bump = staking_pool.bump
+        bump = staking_pool.bump,
+        owner = crate::ID
     )]
     pub staking_pool: Account<'info, StakingPool>,
 
@@ -44,7 +49,8 @@ pub struct Stake<'info> {
     #[account(
         mut,
         seeds = [seeds::BONUS_POOL],
-        bump = bonus_pool.bump
+        bump = bonus_pool.bump,
+        owner = crate::ID
     )]
     pub bonus_pool: Account<'info, BonusPool>,
 
@@ -52,7 +58,8 @@ pub struct Stake<'info> {
     #[account(
         mut,
         seeds = [seeds::REFERRAL_POOL],
-        bump = referral_pool.bump
+        bump = referral_pool.bump,
+        owner = crate::ID
     )]
     pub referral_pool: Account<'info, ReferralPool>,
 

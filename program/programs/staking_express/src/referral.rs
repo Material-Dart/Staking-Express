@@ -8,13 +8,17 @@ use anchor_lang::prelude::*;
 #[derive(Accounts)]
 pub struct DistributeReferralPool<'info> {
     /// Authority only (admin-controlled)
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = authority.to_account_info().owner == &anchor_lang::solana_program::system_program::ID @ StakingError::InvalidAccountOwner
+    )]
     pub authority: Signer<'info>,
 
     /// Global configuration
     #[account(
         seeds = [seeds::GLOBAL_CONFIG],
         bump = global_config.bump,
+        owner = crate::ID,
         constraint = authority.key() == global_config.authority @ StakingError::Unauthorized
     )]
     pub global_config: Account<'info, GlobalConfig>,
@@ -23,7 +27,8 @@ pub struct DistributeReferralPool<'info> {
     #[account(
         mut,
         seeds = [seeds::STAKING_POOL],
-        bump = staking_pool.bump
+        bump = staking_pool.bump,
+        owner = crate::ID
     )]
     pub staking_pool: Account<'info, StakingPool>,
 
@@ -31,7 +36,8 @@ pub struct DistributeReferralPool<'info> {
     #[account(
         mut,
         seeds = [seeds::REFERRAL_POOL],
-        bump = referral_pool.bump
+        bump = referral_pool.bump,
+        owner = crate::ID
     )]
     pub referral_pool: Account<'info, ReferralPool>,
 

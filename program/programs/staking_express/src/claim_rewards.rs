@@ -7,13 +7,17 @@ use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 pub struct ClaimRewards<'info> {
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = user.to_account_info().owner == &anchor_lang::solana_program::system_program::ID @ StakingError::InvalidAccountOwner
+    )]
     pub user: Signer<'info>,
 
     /// Global configuration
     #[account(
         seeds = [seeds::GLOBAL_CONFIG],
         bump = global_config.bump,
+        owner = crate::ID,
         constraint = !global_config.paused @ StakingError::PoolPaused
     )]
     pub global_config: Account<'info, GlobalConfig>,
@@ -22,7 +26,8 @@ pub struct ClaimRewards<'info> {
     #[account(
         mut,
         seeds = [seeds::STAKING_POOL],
-        bump = staking_pool.bump
+        bump = staking_pool.bump,
+        owner = crate::ID
     )]
     pub staking_pool: Account<'info, StakingPool>,
 
@@ -31,6 +36,7 @@ pub struct ClaimRewards<'info> {
         mut,
         seeds = [seeds::USER_STAKE, user.key().as_ref(), staking_pool.key().as_ref()],
         bump = user_stake.bump,
+        owner = crate::ID,
         constraint = user_stake.user == user.key() @ StakingError::Unauthorized
     )]
     pub user_stake: Account<'info, UserStakeState>,

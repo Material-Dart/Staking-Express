@@ -9,12 +9,17 @@ use anchor_lang::prelude::*;
 #[derive(Accounts)]
 pub struct DistributeBonusPool<'info> {
     /// Can be called by anyone when conditions are met
+    #[account(
+        mut,
+        constraint = caller.to_account_info().owner == &anchor_lang::solana_program::system_program::ID @ StakingError::InvalidAccountOwner
+    )]
     pub caller: Signer<'info>,
 
     /// Global configuration
     #[account(
         seeds = [seeds::GLOBAL_CONFIG],
-        bump = global_config.bump
+        bump = global_config.bump,
+        owner = crate::ID
     )]
     pub global_config: Account<'info, GlobalConfig>,
 
@@ -22,7 +27,8 @@ pub struct DistributeBonusPool<'info> {
     #[account(
         mut,
         seeds = [seeds::STAKING_POOL],
-        bump = staking_pool.bump
+        bump = staking_pool.bump,
+        owner = crate::ID
     )]
     pub staking_pool: Account<'info, StakingPool>,
 
@@ -30,7 +36,8 @@ pub struct DistributeBonusPool<'info> {
     #[account(
         mut,
         seeds = [seeds::BONUS_POOL],
-        bump = bonus_pool.bump
+        bump = bonus_pool.bump,
+        owner = crate::ID
     )]
     pub bonus_pool: Account<'info, BonusPool>,
 

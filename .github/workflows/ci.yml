@@ -39,10 +39,6 @@ jobs:
         working-directory: ./program
         run: npm ci
 
-      - name: TypeScript Type Check
-        working-directory: ./program
-        run: npx tsc --noEmit
-
   build-and-test:
     runs-on: ubuntu-24.04
     needs: lint-and-format
@@ -97,6 +93,10 @@ jobs:
       - name: Build Program
         working-directory: ./program
         run: anchor build
+
+      - name: TypeScript Type Check
+        working-directory: ./program
+        run: npx tsc --noEmit
 
       - name: Run Tests
         working-directory: ./program

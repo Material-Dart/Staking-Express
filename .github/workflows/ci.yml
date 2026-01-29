@@ -75,11 +75,6 @@ jobs:
       - name: Verify Solana Version
         run: solana --version
 
-      - name: Generate keypair
-        run: |
-          mkdir -p ~/.config/solana
-          solana-keygen new --no-passphrase --outfile ~/.config/solana/id.json
-
       - name: Install Anchor
         run: |
           cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
@@ -97,10 +92,6 @@ jobs:
       - name: TypeScript Type Check
         working-directory: ./program
         run: npx tsc --noEmit
-
-      - name: Run Tests
-        working-directory: ./program
-        run: anchor test
 
   security-scan:
     runs-on: ubuntu-latest

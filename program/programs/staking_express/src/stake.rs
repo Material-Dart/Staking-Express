@@ -258,6 +258,10 @@ pub fn stake_handler(ctx: Context<Stake>, gross_amount: u64) -> Result<()> {
         user_stake.last_claim_timestamp = current_timestamp;
         user_stake.referrer = referrer_pubkey;
         user_stake.bump = ctx.bumps.user_stake;
+
+        // Increment global counters
+        staking_pool.total_stakers = safe_add(staking_pool.total_stakers, 1)?;
+        bonus_pool.total_participants = safe_add(bonus_pool.total_participants, 1)?;
     }
 
     // Add net amount (90%) to user's stake

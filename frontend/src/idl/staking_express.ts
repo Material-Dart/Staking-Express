@@ -1416,6 +1416,13 @@ export type StakingExpress = {
             "type": "u8"
           },
           {
+            "name": "totalParticipants",
+            "docs": [
+              "Total number of unique participants ever"
+            ],
+            "type": "u64"
+          },
+          {
             "name": "bump",
             "type": "u8"
           }
@@ -1851,6 +1858,13 @@ export type StakingExpress = {
             "type": "i64"
           },
           {
+            "name": "totalStakers",
+            "docs": [
+              "Total number of unique stakers"
+            ],
+            "type": "u64"
+          },
+          {
             "name": "bump",
             "type": "u8"
           }
@@ -1983,8 +1997,8 @@ export type StakingExpress = {
     }
   ]
 };
-export const IDL: StakingExpress =
-{
+
+export const IDL: StakingExpress = {
   "address": "E22THkjryJG3wskBBFQLqKpB4nPkAVUdLZHY1WMLn8gy",
   "metadata": {
     "name": "stakingExpress",
@@ -3396,6 +3410,13 @@ export const IDL: StakingExpress =
             "type": "u8"
           },
           {
+            "name": "totalParticipants",
+            "docs": [
+              "Total number of unique participants ever"
+            ],
+            "type": "u64"
+          },
+          {
             "name": "bump",
             "type": "u8"
           }
@@ -3829,6 +3850,13 @@ export const IDL: StakingExpress =
               "Last timestamp when pool was updated"
             ],
             "type": "i64"
+          },
+          {
+            "name": "totalStakers",
+            "docs": [
+              "Total number of unique stakers"
+            ],
+            "type": "u64"
           },
           {
             "name": "bump",

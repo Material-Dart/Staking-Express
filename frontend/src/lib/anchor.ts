@@ -1,8 +1,7 @@
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { Connection, PublicKey } from "@solana/web3.js";
-import { IDL, StakingExpress } from "../idl/staking_express";
+import { StakingExpress, IDL } from "../idl/staking_express";
 
-export { IDL };
 export type { StakingExpress };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

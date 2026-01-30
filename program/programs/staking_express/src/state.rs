@@ -51,6 +51,9 @@ pub struct StakingPool {
     /// Last timestamp when pool was updated
     pub last_update_timestamp: i64,
 
+    /// Total number of unique stakers
+    pub total_stakers: u64,
+
     pub bump: u8,
 }
 
@@ -60,6 +63,7 @@ impl StakingPool {
         8 +  // total_staked
         16 + // reward_per_share (u128)
         8 +  // last_update_timestamp
+        8 +  // total_stakers
         1; // bump
 }
 
@@ -131,6 +135,9 @@ pub struct BonusPool {
     /// Number of investors in buffer (0-10)
     pub investor_count: u8,
 
+    /// Total number of unique participants ever
+    pub total_participants: u64,
+
     pub bump: u8,
 }
 
@@ -143,6 +150,7 @@ impl BonusPool {
         (40 * MAX_LAST_TEN_INVESTORS) + // last_ten_investors array
         1 +   // current_position
         1 +   // investor_count
+        8 +   // total_participants
         1; // bump
 }
 

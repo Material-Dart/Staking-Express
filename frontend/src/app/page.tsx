@@ -138,7 +138,7 @@ export default function Home() {
           <div className="bg-gradient-to-br from-slate-800/50 to-indigo-900/30 backdrop-blur-sm rounded-2xl p-8 border border-indigo-500/20 shadow-2xl">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="text-center">
-                <div className="text-4xl font-bold text-white mb-2">{staking.loading ? "..." : "1,2k+"}</div>
+                <div className="text-4xl font-bold text-white mb-2">{staking.loading ? "..." : staking.totalStakers}</div>
                 <div className="text-gray-400">Toplam Stake Eden</div>
               </div>
               <div className="text-center">
@@ -238,7 +238,7 @@ export default function Home() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-slate-900/50 p-4 rounded-xl">
                     <div className="text-xs text-gray-500 mb-1">Katılımcı Sayısı</div>
-                    <div className="text-lg font-bold text-white">842</div>
+                    <div className="text-lg font-bold text-white">{staking.totalParticipants}</div>
                   </div>
                   <div className="bg-slate-900/50 p-4 rounded-xl">
                     <div className="text-xs text-gray-500 mb-1">Geri Sayım</div>

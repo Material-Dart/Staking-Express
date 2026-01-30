@@ -9,6 +9,8 @@ export interface StakingData {
     bonusPoolBalance: number;
     referralPoolBalance: number;
     bonusCountdown: number;
+    totalStakers: number;
+    totalParticipants: number;
     userStaked: number;
     userRewards: number;
     loading: boolean;
@@ -23,6 +25,8 @@ export const useStaking = () => {
         bonusPoolBalance: 0,
         referralPoolBalance: 0,
         bonusCountdown: 0,
+        totalStakers: 0,
+        totalParticipants: 0,
         userStaked: 0,
         userRewards: 0,
         loading: true,
@@ -74,6 +78,8 @@ export const useStaking = () => {
                 bonusPoolBalance: bonusPool.balance.toNumber() / 1e9,
                 referralPoolBalance: referralPool.balance.toNumber() / 1e9,
                 bonusCountdown: countdown,
+                totalStakers: stakingPool.totalStakers.toNumber(),
+                totalParticipants: bonusPool.totalParticipants.toNumber(),
                 userStaked,
                 userRewards,
                 loading: false,

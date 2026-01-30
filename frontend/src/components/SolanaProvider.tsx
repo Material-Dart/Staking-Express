@@ -32,7 +32,6 @@ export const SolanaProvider = ({ children }: { children: React.ReactNode }) => {
              */
             new PhantomWalletAdapter(),
         ],
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         []
     );
 

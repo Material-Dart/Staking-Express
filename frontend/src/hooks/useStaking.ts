@@ -1,8 +1,9 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { BN } from "@coral-xyz/anchor";
+import { BN, Program } from "@coral-xyz/anchor";
+import { PublicKey, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { getProgram } from "../lib/anchor";
-import { getStakingPoolPDA, getBonusPoolPDA, getReferralPoolPDA, getUserStakePDA } from "../lib/pda";
+import { getStakingPoolPDA, getBonusPoolPDA, getReferralPoolPDA, getUserStakePDA, getGlobalConfigPDA } from "../lib/pda";
 
 export interface StakingData {
     totalStaked: number;
@@ -13,13 +14,22 @@ export interface StakingData {
     totalParticipants: number;
     userStaked: number;
     userRewards: number;
+    walletBalance: number;
+    lastTenInvestors: { investor: string; amount: number }[];
     loading: boolean;
     error: string | null;
 }
 
-export const useStaking = () => {
+export interface StakingActions {
+    stake: (amount: number) => Promise<string>;
+    unstake: (amount: number) => Promise<string>;
+    claim: () => Promise<string>;
+}
+
+export const useStaking = (): StakingData & StakingActions => {
     const { connection } = useConnection();
-    const { publicKey: userPublicKey } = useWallet();
+    const wallet = useWallet();
+    const userPublicKey = wallet.publicKey;
     const [data, setData] = useState<StakingData>({
         totalStaked: 0,
         bonusPoolBalance: 0,
@@ -29,13 +39,15 @@ export const useStaking = () => {
         totalParticipants: 0,
         userStaked: 0,
         userRewards: 0,
+        walletBalance: 0,
+        lastTenInvestors: [],
         loading: true,
         error: null,
     });
 
-    const program = useMemo(() => getProgram(connection, { publicKey: userPublicKey }), [connection, userPublicKey]);
+    const program = useMemo(() => getProgram(connection, wallet), [connection, wallet]);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
             const stakingPoolPDA = getStakingPoolPDA();
             const bonusPoolPDA = getBonusPoolPDA();
@@ -50,14 +62,18 @@ export const useStaking = () => {
 
             let userStaked = 0;
             let userRewards = 0;
+            let walletBalance = 0;
 
             if (userPublicKey) {
                 try {
+                    const balance = await connection.getBalance(userPublicKey);
+                    walletBalance = balance / LAMPORTS_PER_SOL;
+
                     const userStakePDA = getUserStakePDA(userPublicKey);
                     const userStake = await program.account.userStakeState.fetch(userStakePDA);
                     userStaked = Number(userStake.stakedAmount) / 1e9;
 
-                    // Pending rewards calculation: (staked * rewardPerShare / REWARD_PRECISION) - rewardDebt
+                    // Pending rewards calculation
                     const rewardPerShare = new BN(stakingPool.rewardPerShare.toString());
                     const rewardDebt = new BN(userStake.rewardDebt.toString());
                     const stakedAmount = new BN(userStake.stakedAmount.toString());
@@ -73,6 +89,13 @@ export const useStaking = () => {
             const currentTimestamp = Math.floor(Date.now() / 1000);
             const countdown = Math.max(0, bonusPool.expiryTimestamp.toNumber() - currentTimestamp);
 
+            // Parse Last Ten Investors
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const lastTenInvestors = (bonusPool.lastTenInvestors as any[]).map(item => ({
+                investor: item.investor?.toString() || "",
+                amount: item.amount ? item.amount.toNumber() / 1e9 : 0
+            })).reverse().filter(i => i.amount > 0);
+
             setData({
                 totalStaked: stakingPool.totalStaked.toNumber() / 1e9,
                 bonusPoolBalance: bonusPool.balance.toNumber() / 1e9,
@@ -82,6 +105,8 @@ export const useStaking = () => {
                 totalParticipants: bonusPool.totalParticipants.toNumber(),
                 userStaked,
                 userRewards,
+                walletBalance,
+                lastTenInvestors,
                 loading: false,
                 error: null,
             });
@@ -90,14 +115,86 @@ export const useStaking = () => {
             const message = err instanceof Error ? err.message : String(err);
             setData(prev => ({ ...prev, loading: false, error: message }));
         }
-    };
+    }, [program, userPublicKey, connection]);
 
     useEffect(() => {
         fetchData();
-        const interval = setInterval(fetchData, 10000); // Polling every 10s
+        const interval = setInterval(fetchData, 10000);
         return () => clearInterval(interval);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [program, userPublicKey]);
+    }, [fetchData]);
 
-    return data;
+    const stake = async (amount: number) => {
+        if (!userPublicKey) throw new Error("Wallet not connected");
+
+        try {
+            const globalConfigPDA = getGlobalConfigPDA();
+            const config = await program.account.globalConfig.fetch(globalConfigPDA);
+
+            const amountBN = new BN(amount * 1e9);
+
+            const tx = await program.methods
+                .stake(amountBN)
+                .accounts({
+                    user: userPublicKey,
+                    treasury: config.treasury,
+                    materialDartWallet: config.materialDartWallet,
+                    referrer: null, // Initial version supports null referrer
+                })
+                .rpc();
+
+            await fetchData();
+            return tx;
+        } catch (error) {
+            console.error("Stake error:", error);
+            throw error;
+        }
+    };
+
+    const unstake = async (amount: number) => {
+        if (!userPublicKey) throw new Error("Wallet not connected");
+
+        try {
+            const globalConfigPDA = getGlobalConfigPDA();
+            const config = await program.account.globalConfig.fetch(globalConfigPDA);
+
+            const amountBN = new BN(amount * 1e9);
+
+            const tx = await program.methods
+                .unstake(amountBN)
+                .accounts({
+                    user: userPublicKey,
+                    treasury: config.treasury,
+                    materialDartWallet: config.materialDartWallet,
+                    referrer: null,
+                })
+                .rpc();
+
+            await fetchData();
+            return tx;
+        } catch (error) {
+            console.error("Unstake error:", error);
+            throw error;
+        }
+    };
+
+    const claim = async () => {
+        if (!userPublicKey) throw new Error("Wallet not connected");
+
+        try {
+            const tx = await program.methods
+                .claimRewards()
+                .accounts({
+                    user: userPublicKey,
+                })
+                .rpc();
+
+            await fetchData();
+            return tx;
+        } catch (error) {
+            console.error("Claim error:", error);
+            throw error;
+        }
+    };
+
+    return { ...data, stake, unstake, claim };
 };

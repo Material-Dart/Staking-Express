@@ -26,12 +26,22 @@ async function main() {
     console.log(`Initializing program ${programId.toString()}...`);
 
     // 3. Prepare Accounts
-    // In a real dev scenario, these might be fixed addresses, but random is fine for dev reset
     const treasury = Keypair.generate();
     const materialDartWallet = Keypair.generate();
 
     console.log("Treasury:", treasury.publicKey.toString());
     console.log("Material Dart Wallet:", materialDartWallet.publicKey.toString());
+
+    // 4. Fund these accounts to satisfy rent-exemption for fees
+    console.log("Funding wallets...");
+    await provider.connection.confirmTransaction(
+        await provider.connection.requestAirdrop(treasury.publicKey, 0.1 * anchor.web3.LAMPORTS_PER_SOL),
+        "confirmed"
+    );
+    await provider.connection.confirmTransaction(
+        await provider.connection.requestAirdrop(materialDartWallet.publicKey, 0.1 * anchor.web3.LAMPORTS_PER_SOL),
+        "confirmed"
+    );
 
     // 4. Send Initialize Transaction
     try {

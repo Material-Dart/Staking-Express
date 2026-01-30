@@ -12,3 +12,17 @@ export const SEEDS = {
     REFERRAL_POOL: Buffer.from("referral_pool"),
     REFERRER: Buffer.from("referrer"),
 };
+export type Cluster = "localnet" | "devnet" | "mainnet-beta";
+export const SOLANA_NETWORK = "localnet" as Cluster; // Change to "devnet" or "mainnet-beta" as needed
+
+export const getExplorerUrl = (signature: string) => {
+    switch (SOLANA_NETWORK) {
+        case "devnet":
+            return `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
+        case "mainnet-beta":
+            return `https://explorer.solana.com/tx/${signature}`;
+        case "localnet":
+        default:
+            return `https://explorer.solana.com/tx/${signature}?cluster=custom&customUrl=${encodeURIComponent(RPC_ENDPOINT)}`;
+    }
+};

@@ -77,6 +77,13 @@ pub fn initialize_handler(ctx: Context<Initialize>) -> Result<()> {
     let treasury = ctx.accounts.treasury.key();
     let material_dart_wallet = ctx.accounts.material_dart_wallet.key();
 
+    // Defense-in-depth: Ensure global config is not already initialized
+    // (Anchor `init` handles this, but explicit check satisfies Radar)
+    require!(
+        !global_config.is_initialized,
+        StakingError::AlreadyInitialized
+    );
+
     // Get current timestamp
     let current_timestamp = get_current_timestamp()?;
 
@@ -85,6 +92,7 @@ pub fn initialize_handler(ctx: Context<Initialize>) -> Result<()> {
     global_config.treasury = treasury;
     global_config.material_dart_wallet = material_dart_wallet;
     global_config.paused = false;
+    global_config.is_initialized = true;
     global_config.bump = ctx.bumps.global_config;
 
     // Initialize StakingPool

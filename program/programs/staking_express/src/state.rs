@@ -18,6 +18,9 @@ pub struct GlobalConfig {
     /// Whether the protocol is paused
     pub paused: bool,
 
+    /// Whether the protocol is initialized
+    pub is_initialized: bool,
+
     pub bump: u8,
 }
 
@@ -27,6 +30,7 @@ impl GlobalConfig {
         32 + // treasury
         32 + // material_dart_wallet
         1 +  // paused
+        1 +  // is_initialized
         1; // bump
 }
 

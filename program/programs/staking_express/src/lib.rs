@@ -29,7 +29,7 @@ pub use state::*;
 pub use unstake::*;
 
 // Program ID - This will be replaced when deployed
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("E22THkjryJG3wskBBFQLqKpB4nPkAVUdLZHY1WMLn8gy");
 
 /// Staking Express - Production-grade Solana staking protocol
 ///

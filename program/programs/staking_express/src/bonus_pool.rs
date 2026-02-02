@@ -8,9 +8,10 @@ use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 pub struct DistributeBonusPool<'info> {
-    /// Can be called by anyone when conditions are met
+    /// Only the protocol admin (global_config.authority) can call
     #[account(
         mut,
+        constraint = caller.key() == global_config.authority @ StakingError::Unauthorized,
         constraint = caller.to_account_info().owner == &anchor_lang::solana_program::system_program::ID @ StakingError::InvalidAccountOwner
     )]
     pub caller: Signer<'info>,

@@ -19,7 +19,6 @@ describe("staking-express", () => {
     let materialDartWallet: anchor.web3.Keypair;
 
     // Constants
-    const MIN_STAKE = new anchor.BN(10_000_000); // 0.01 SOL
 
     before(async () => {
         // Generate keypairs
@@ -377,10 +376,34 @@ describe("staking-express", () => {
         try {
             await program.methods.distributeBonusPool().accounts({
                 caller: provider.wallet.publicKey,
+                globalConfig: globalConfig,
+                stakingPool: stakingPool,
+                bonusPool: bonusPool,
+                systemProgram: anchor.web3.SystemProgram.programId,
             }).rpc();
             expect.fail("Should have failed with BonusNotExpired");
         } catch (e) {
             expect(e.error.errorCode.code).to.equal("BonusNotExpired");
+        }
+    });
+
+    it("Distributes Bonus Pool (Non-admin Unauthorized)", async () => {
+        // Create random user who is NOT the admin
+        const nonAdmin = anchor.web3.Keypair.generate();
+        const sig = await provider.connection.requestAirdrop(nonAdmin.publicKey, 1 * anchor.web3.LAMPORTS_PER_SOL);
+        await provider.connection.confirmTransaction(sig);
+
+        try {
+            await program.methods.distributeBonusPool().accounts({
+                caller: nonAdmin.publicKey,
+                globalConfig: globalConfig,
+                stakingPool: stakingPool,
+                bonusPool: bonusPool,
+                systemProgram: anchor.web3.SystemProgram.programId,
+            }).signers([nonAdmin]).rpc();
+            expect.fail("Should have failed with Unauthorized");
+        } catch (e) {
+            expect(e.error.errorCode.code).to.equal("Unauthorized");
         }
     });
 });

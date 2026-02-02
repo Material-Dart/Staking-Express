@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { BN, Program } from "@coral-xyz/anchor";
-import { PublicKey, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { BN } from "@coral-xyz/anchor";
+import { SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { getProgram } from "../lib/anchor";
 import { getStakingPoolPDA, getBonusPoolPDA, getReferralPoolPDA, getUserStakePDA, getGlobalConfigPDA } from "../lib/pda";
 
@@ -16,6 +16,7 @@ export interface StakingData {
     userRewards: number;
     walletBalance: number;
     lastTenInvestors: { investor: string; amount: number }[];
+    isAdmin: boolean;
     loading: boolean;
     error: string | null;
 }
@@ -24,6 +25,7 @@ export interface StakingActions {
     stake: (amount: number) => Promise<string>;
     unstake: (amount: number) => Promise<string>;
     claim: () => Promise<string>;
+    distributeBonusPool: () => Promise<string>;
 }
 
 export const useStaking = (): StakingData & StakingActions => {
@@ -41,6 +43,7 @@ export const useStaking = (): StakingData & StakingActions => {
         userRewards: 0,
         walletBalance: 0,
         lastTenInvestors: [],
+        isAdmin: false,
         loading: true,
         error: null,
     });
@@ -49,6 +52,9 @@ export const useStaking = (): StakingData & StakingActions => {
 
     const fetchData = useCallback(async () => {
         try {
+            const globalConfigPDA = getGlobalConfigPDA();
+            // Fetch global config to discover authority
+            const globalConfig = await program.account.globalConfig.fetch(globalConfigPDA);
             const stakingPoolPDA = getStakingPoolPDA();
             const bonusPoolPDA = getBonusPoolPDA();
             const referralPoolPDA = getReferralPoolPDA();
@@ -107,6 +113,7 @@ export const useStaking = (): StakingData & StakingActions => {
                 userRewards,
                 walletBalance,
                 lastTenInvestors,
+                isAdmin: userPublicKey ? globalConfig.authority.equals(userPublicKey) : false,
                 loading: false,
                 error: null,
             });
@@ -196,5 +203,32 @@ export const useStaking = (): StakingData & StakingActions => {
         }
     };
 
-    return { ...data, stake, unstake, claim };
+    const distributeBonusPool = async () => {
+        if (!userPublicKey) throw new Error("Wallet not connected");
+
+        try {
+            const globalConfigPDA = getGlobalConfigPDA();
+            const stakingPoolPDA = getStakingPoolPDA();
+            const bonusPoolPDA = getBonusPoolPDA();
+
+            const tx = await program.methods
+                .distributeBonusPool()
+                .accounts({
+                    caller: userPublicKey,
+                    globalConfig: globalConfigPDA,
+                    stakingPool: stakingPoolPDA,
+                    bonusPool: bonusPoolPDA,
+                    systemProgram: SystemProgram.programId,
+                })
+                .rpc();
+
+            await fetchData();
+            return tx;
+        } catch (error) {
+            console.error("Distribute bonus error:", error);
+            throw error;
+        }
+    };
+
+    return { ...data, stake, unstake, claim, distributeBonusPool };
 };

@@ -4,13 +4,13 @@ import { useEffect, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useStaking } from "@/hooks/useStaking";
-import { TrendingUp, Wallet, Clock, Users, Shield, ArrowUpRight, ArrowDownLeft, AlertCircle, LogOut, Menu, X } from "lucide-react";
+import { TrendingUp, Wallet, Clock, Users, Shield, ArrowUpRight, ArrowDownLeft, Menu, X } from "lucide-react";
 import { getExplorerUrl } from "@/lib/constants";
 import Link from "next/link";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
 export default function Dashboard() {
-    const { connected, publicKey } = useWallet();
+    const { connected } = useWallet();
     const staking = useStaking();
     const [activeTab, setActiveTab] = useState<"stake" | "unstake">("stake");
     const [amount, setAmount] = useState("");
@@ -80,6 +80,19 @@ export default function Dashboard() {
         } catch (e) {
             console.error(e);
             alert("Claim failed: " + (e as Error).message);
+        }
+    };
+
+    const handleDistributeBonus = async () => {
+        if (!staking.distributeBonusPool) return;
+        setLastSignature(null);
+        try {
+            const tx = await staking.distributeBonusPool();
+            setLastSignature(tx);
+            alert("Bonus distribution triggered: " + tx);
+        } catch (e) {
+            console.error(e);
+            alert("Distribute failed: " + (e as Error).message);
         }
     };
 
@@ -343,6 +356,17 @@ export default function Dashboard() {
                                         <div className="text-gray-400 text-xs mb-1">Bonus Havuzu katılımcısı</div>
                                         <div className="text-xl font-bold">{staking.totalParticipants}</div>
                                     </div>
+                                </div>
+                                {/* Admin action: Distribute Bonus Pool */}
+                                <div className="md:col-span-2 flex items-center justify-end">
+                                    {connected && staking.isAdmin && (
+                                        <button
+                                            onClick={handleDistributeBonus}
+                                            className="ml-auto bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow"
+                                        >
+                                            Distribute Bonus Pool
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>

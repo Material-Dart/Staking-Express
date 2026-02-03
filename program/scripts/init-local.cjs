@@ -66,7 +66,23 @@ async function main() {
     }
 }
 
-main().catch(err => {
+async function showMyWallet() {
+    process.env.ANCHOR_PROVIDER_URL = 'http://127.0.0.1:8899';
+    const walletPath = process.env.ANCHOR_WALLET || path.join(require('os').homedir(), '.config/solana/id.json');
+    process.env.ANCHOR_WALLET = walletPath;
+    console.log("Using wallet at:", walletPath);
+
+    const provider = anchor.AnchorProvider.env();
+
+    console.log("My Wallet Public Key:", provider.wallet.publicKey);
+}
+
+/*main().catch(err => {
+    console.error(err);
+    process.exit(1);
+});*/
+
+showMyWallet().catch(err => {
     console.error(err);
     process.exit(1);
 });

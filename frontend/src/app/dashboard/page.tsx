@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useStaking } from "@/hooks/useStaking";
-import { TrendingUp, Wallet, Clock, Users, Shield, ArrowUpRight, ArrowDownLeft, Menu, X } from "lucide-react";
+import { TrendingUp, Wallet, Clock, Users, Shield, ArrowUpRight, ArrowDownLeft, X } from "lucide-react";
 import { getExplorerUrl } from "@/lib/constants";
 import Link from "next/link";
 import "@solana/wallet-adapter-react-ui/styles.css";
@@ -15,7 +15,6 @@ export default function Dashboard() {
     const [activeTab, setActiveTab] = useState<"stake" | "unstake">("stake");
     const [amount, setAmount] = useState("");
     const [isMounted, setIsMounted] = useState(false);
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [localCountdown, setLocalCountdown] = useState(0);
     const [lastSignature, setLastSignature] = useState<string | null>(null);
 
@@ -155,7 +154,7 @@ export default function Dashboard() {
                                 rel="noopener noreferrer"
                                 className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-lg shadow-indigo-500/20 flex items-center gap-2"
                             >
-                                Explorer'da Gör <ArrowUpRight className="w-3 h-3" />
+                                Explorer&apos;da Gör <ArrowUpRight className="w-3 h-3" />
                             </a>
                         </div>
                     </div>

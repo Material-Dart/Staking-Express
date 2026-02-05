@@ -211,7 +211,9 @@ export const useStaking = (): StakingData & StakingActions => {
             const stakingPoolPDA = getStakingPoolPDA();
             const bonusPoolPDA = getBonusPoolPDA();
 
-            const tx = await program.methods
+            // Cast through unknown to bypass strict type checking
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const tx = await (program as unknown as any).methods
                 .distributeBonusPool()
                 .accounts({
                     caller: userPublicKey,

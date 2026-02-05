@@ -179,7 +179,7 @@ export type StakingExpress = {
         {
           "name": "caller",
           "docs": [
-            "Can be called by anyone when conditions are met"
+            "Only the protocol admin (global_config.authority) can call"
           ],
           "writable": true,
           "signer": true
@@ -2173,7 +2173,7 @@ export const IDL: StakingExpress = {
         {
           "name": "caller",
           "docs": [
-            "Can be called by anyone when conditions are met"
+            "Only the protocol admin (global_config.authority) can call"
           ],
           "writable": true,
           "signer": true

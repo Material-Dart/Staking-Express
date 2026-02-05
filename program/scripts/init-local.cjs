@@ -43,7 +43,7 @@ async function main() {
         "confirmed"
     );
 
-    // 4. Send Initialize Transaction
+    // 5. Send Initialize Transaction
     try {
         const tx = await program.methods
             .initialize()

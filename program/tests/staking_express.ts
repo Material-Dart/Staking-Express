@@ -4,8 +4,10 @@ import { StakingExpress } from "../target/types/staking_express";
 import { expect } from "chai";
 
 describe("staking-express", () => {
-    // Configure the client to use the local cluster
-    const provider = anchor.AnchorProvider.env();
+    // Configure the client to use DevNet or custom RPC (e.g., Helius)
+    const connection = new anchor.web3.Connection("https://devnet.helius-rpc.com/?api-key=05d1f2fc-c441-4cd8-beec-24e0130f9936");
+    const wallet = anchor.AnchorProvider.env().wallet;
+    const provider = new anchor.AnchorProvider(connection, wallet);
     anchor.setProvider(provider);
 
     const program = anchor.workspace.StakingExpress as Program<StakingExpress>;

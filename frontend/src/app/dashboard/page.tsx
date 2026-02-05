@@ -120,11 +120,6 @@ export default function Dashboard() {
                             </div>
                             <WalletMultiButton className="!bg-indigo-600 hover:!bg-indigo-700 !rounded-full !h-10 !px-6 !text-sm !font-medium transition-all" />
                         </div>
-
-                        {/* Mobile Menu Button */}
-                        <button className="md:hidden p-2 text-gray-400 hover:text-white" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-                            {mobileMenuOpen ? <X /> : <Menu />}
-                        </button>
                     </div>
                 </div>
             </nav>

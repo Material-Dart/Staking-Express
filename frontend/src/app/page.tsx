@@ -84,7 +84,6 @@ export default function Home() {
         {mobileMenuOpen && (
           <div className="md:hidden bg-slate-900/95 backdrop-blur-lg">
             <div className="px-4 py-4 space-y-3">
-              <a href="#nasil-calisir" className="block text-gray-300 hover:text-white transition-colors">Nasıl Çalışır</a>
               <a href="#komisyonlar" className="block text-gray-300 hover:text-white transition-colors">Komisyonlar</a>
               <a href="#bonuslar" className="block text-gray-300 hover:text-white transition-colors">Bonuslar</a>
               <div className="flex justify-center py-2">

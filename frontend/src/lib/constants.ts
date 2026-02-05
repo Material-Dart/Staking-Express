@@ -2,7 +2,7 @@ import { PublicKey } from "@solana/web3.js";
 
 export const PROGRAM_ID = new PublicKey("E22THkjryJG3wskBBFQLqKpB4nPkAVUdLZHY1WMLn8gy");
 
-export const RPC_ENDPOINT = "http://127.0.0.1:8899";
+export const RPC_ENDPOINT = "https://api.devnet.solana.com";
 
 export const SEEDS = {
     GLOBAL_CONFIG: Buffer.from("global_config"),
@@ -13,7 +13,7 @@ export const SEEDS = {
     REFERRER: Buffer.from("referrer"),
 };
 export type Cluster = "localnet" | "devnet" | "mainnet-beta";
-export const SOLANA_NETWORK = "localnet" as Cluster; // Change to "devnet" or "mainnet-beta" as needed
+export const SOLANA_NETWORK = "devnet" as Cluster; // Change to "devnet" or "mainnet-beta" as needed
 
 export const getExplorerUrl = (signature: string) => {
     switch (SOLANA_NETWORK) {

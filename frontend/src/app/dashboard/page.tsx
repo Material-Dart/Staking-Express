@@ -88,7 +88,7 @@ export default function Dashboard() {
         try {
             const tx = await staking.distributeBonusPool();
             setLastSignature(tx);
-            alert("Bonus distribution triggered: " + tx);
+            console.log("Tx signature:", tx);
         } catch (e) {
             console.error(e);
             alert("Distribute failed: " + (e as Error).message);

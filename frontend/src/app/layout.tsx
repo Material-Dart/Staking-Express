@@ -18,6 +18,7 @@ export const metadata: Metadata = {
 };
 
 import { SolanaProvider } from "@/components/SolanaProvider";
+import Script from "next/script";
 
 export default function RootLayout({
   children,
@@ -26,6 +27,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <Script src="https://unpkg.com/logtohtml@latest/dist/bundle.js" strategy="afterInteractive" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

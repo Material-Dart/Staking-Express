@@ -89,6 +89,7 @@ Wallet Compatibility: Same adapter; ensure network switching prompts users corre
 RPC Endpoint Strategy
 Public: Free but rate-limited (429 errors); use for MVP.
 Private: Paid for high throughput; essential for production to avoid outages.
+
 4. Production Checklist
 Frontend Build Configuration
  Set NODE_ENV=production in build scripts.

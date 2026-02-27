@@ -13,10 +13,12 @@ interface StakeUnstakeCardProps {
 export default function StakeUnstakeCard({ staking, connected, onTransactionComplete }: StakeUnstakeCardProps) {
     const [activeTab, setActiveTab] = useState<"stake" | "unstake">("stake");
     const [amount, setAmount] = useState("");
+    const [isStaking, setIsStaking] = useState(false);
 
     // Safe handlers (placeholders until hooked up to actual contract calls beyond read)
     const handleStake = async () => {
         if (!amount || !staking.stake) return;
+        setIsStaking(true);
         try {
             const tx = await staking.stake(Number(amount));
             setAmount("");
@@ -25,11 +27,14 @@ export default function StakeUnstakeCard({ staking, connected, onTransactionComp
         } catch (e) {
             console.error(e);
             alert("Stake failed: " + (e as Error).message);
+        } finally {
+            setIsStaking(false);
         }
     };
 
     const handleUnstake = async () => {
         if (!amount || !staking.unstake) return;
+        setIsStaking(true);
         try {
             const tx = await staking.unstake(Number(amount));
             setAmount("");
@@ -38,6 +43,8 @@ export default function StakeUnstakeCard({ staking, connected, onTransactionComp
         } catch (e) {
             console.error(e);
             alert("Unstake failed: " + (e as Error).message);
+        } finally {
+            setIsStaking(false);
         }
     };
 
@@ -119,14 +126,14 @@ export default function StakeUnstakeCard({ staking, connected, onTransactionComp
                             ? "bg-gradient-to-r from-indigo-600 to-indigo-500 hover:shadow-indigo-500/25"
                             : "bg-gradient-to-r from-purple-600 to-purple-500 hover:shadow-purple-500/25"
                         }`}
-                    disabled={!connected}
+                    disabled={!connected || isStaking}
                     onClick={activeTab === "stake" ? handleStake : handleUnstake}
                 >
                     {!connected
                         ? "Cüzdanı Bağlayın"
                         : activeTab === "stake"
-                            ? <><ArrowUpRight className="w-5 h-5" /> Stake Et</>
-                            : <><ArrowDownLeft className="w-5 h-5" /> Çekim Yap</>
+                            ? <><ArrowUpRight className="w-5 h-5" /> {isStaking ? "Stake Ediliyor..." : "Stake Et"}</>
+                            : <><ArrowDownLeft className="w-5 h-5" /> {isStaking ? "Çekim Yapılıyor.." : "Çekim Yap"}</>
                     }
                 </button>
             </div>

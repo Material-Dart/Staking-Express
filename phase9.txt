@@ -106,7 +106,9 @@ RPC & Rate Limits
  Monitor for 429 errors; switch to paid RPC.
 Monitoring & Error Tracking
  Integrate Sentry or LogRocket for error tracking.
- Add transaction monitoring (e.g., via Helius webhooks).
+ 
+ !!!Add transaction monitoring (e.g., via Helius webhooks).
+ 
  Set up uptime monitoring (UptimeRobot).
 Security
  Revoke upgrade authority post-testing.

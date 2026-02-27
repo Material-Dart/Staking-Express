@@ -38,6 +38,7 @@ export default function Dashboard() {
     const [isMounted, setIsMounted] = useState(false);
     const [localCountdown, setLocalCountdown] = useState(0);
     const [lastSignature, setLastSignature] = useState<string | null>(null);
+    const [isClaiming, setIsClaiming] = useState(false);
 
     useEffect(() => {
         setIsMounted(true);
@@ -64,6 +65,7 @@ export default function Dashboard() {
     const handleClaim = async () => {
         if (!staking.claim) return;
         setLastSignature(null);
+        setIsClaiming(true);
         try {
             const tx = await staking.claim();
             setLastSignature(tx);
@@ -71,6 +73,8 @@ export default function Dashboard() {
         } catch (e) {
             console.error(e);
             alert("Claim failed: " + (e as Error).message);
+        } finally {
+            setIsClaiming(false);
         }
     };
 
@@ -140,10 +144,10 @@ export default function Dashboard() {
                             <div className="text-sm text-gray-400">Biriken Ödül</div>
                             <button
                                 onClick={handleClaim}
-                                disabled={staking.userRewards <= 0 || !staking.claim}
+                                disabled={staking.userRewards <= 0 || !staking.claim || isClaiming}
                                 className="text-xs text-purple-400 hover:text-purple-300 font-semibold uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Talep Et
+                                {isClaiming ? "Talep Ediliyor..." : "Talep Et"}
                             </button>
                         </div>
                     </div>

@@ -1,5 +1,6 @@
 import { StakingActions, StakingData } from "@/hooks/useStaking";
 import { TrendingUp, ArrowUpRight } from "lucide-react";
+import { useState } from "react";
 
 interface ProtocolStatsProps {
     staking: StakingData & StakingActions;
@@ -8,8 +9,11 @@ interface ProtocolStatsProps {
 }
 
 export default function ProtocolStats({ staking, connected, onTransactionComplete }: ProtocolStatsProps) {
+    const [isDistributing, setIsDistributing] = useState(false);
+
     const handleDistributeBonus = async () => {
         if (!staking.distributeBonusPool) return;
+        setIsDistributing(true);
         try {
             const tx = await staking.distributeBonusPool();
             onTransactionComplete(tx);
@@ -17,6 +21,8 @@ export default function ProtocolStats({ staking, connected, onTransactionComplet
         } catch (e) {
             console.error(e);
             alert("Distribute failed: " + (e as Error).message);
+        } finally {
+            setIsDistributing(false);
         }
     };
 
@@ -52,8 +58,9 @@ export default function ProtocolStats({ staking, connected, onTransactionComplet
                         <button
                             onClick={handleDistributeBonus}
                             className="ml-auto bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow transaction-colors"
+                            disabled={isDistributing}
                         >
-                            Distribute Bonus Pool
+                            {isDistributing ? "Distributing Bonus Pool" : "Distribute Bonus Pool"}
                         </button>
                     )}
                 </div>
